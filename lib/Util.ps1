@@ -44,13 +44,13 @@ function Write-SFHeader {
 function Write-SFStatus {
     param([string]$Status, [string]$Text)
     $colors = @{
-        OK = 'Green'; APPLIED = 'Green'; DRYRUN = 'White'; INFO = 'Gray'; SAME = 'DarkGray'
+        OK = 'Green'; APPLIED = 'White'; DRYRUN = 'White'; INFO = 'Gray'; SAME = 'DarkGray'
         WARN = 'Yellow'; SKIP = 'DarkGray'; BAD = 'Red'; FAIL = 'Red'; BLOCKED = 'Red'
     }
     $c = $colors[$Status]
     if (-not $c) { $c = 'Gray' }
-    Write-Host ('  [{0,-7}] ' -f $Status) -ForegroundColor $c -NoNewline
-    Write-Host $Text
+    # one Write-Host per line: with -NoNewline, the PS 5.1 transcript splits the line in two
+    Write-Host (('  [{0,-7}] ' -f $Status) + $Text) -ForegroundColor $c
 }
 
 function ConvertTo-SFHex {
@@ -87,6 +87,7 @@ function New-SFResult {
 function Format-SFValue {
     param($Value)
     if ($null -eq $Value) { return '(not set)' }
+    if ($Value -is [bool]) { if ($Value) { return 'on' } return 'off' }
     if ($Value -is [System.Array]) { return ('[' + (($Value | ForEach-Object { "$_" }) -join ', ') + ']') }
     return "$Value"
 }

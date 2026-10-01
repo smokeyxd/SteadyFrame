@@ -378,6 +378,36 @@ It 'spots folders left by Talon / WinUtil / Win11Debloat' {
     }
 }
 
+It 'WinUtil runner applies each tweak itself and reports per tweak' {
+    $dir = Join-Path $env:TEMP ('sf-wu-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    $applied = Join-Path $dir 'applied.txt'
+    # Mimics WinUtil: same param block, -Config pass returns early, tweaks live in $sync.configs.tweaks
+    $fake = @'
+param([string]$Config, [string]$Preset, [switch]$Offline)
+$sync = [Hashtable]::Synchronized(@{})
+$sync.configs = @{ tweaks = ('{"WPFTweaksGood":{"x":1},"WPFTweaksBoom":{"x":1}}' | ConvertFrom-Json) }
+function Invoke-WinUtilTweaks { param($CheckBox) if ($CheckBox -eq 'WPFTweaksBoom') { throw 'boom' }; Add-Content -LiteralPath '__APPLIED__' -Value $CheckBox }
+if ($Config) { Write-Host 'Done.'; return }
+throw 'the window would open here'
+'@
+    $fakePath = Join-Path $dir 'winutil.ps1'
+    [IO.File]::WriteAllText($fakePath, $fake.Replace('__APPLIED__', $applied))
+    $cfg = Join-Path $dir 'cfg.json'; Set-Content -LiteralPath $cfg -Value '["WPFTweaksGood"]'
+    $res = Join-Path $dir 'results.json'
+    $runner = Join-Path $root 'lib\WinUtilRunner.ps1'
+    try {
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $runner -WinUtilPath $fakePath -ConfigFile $cfg -TweakIds 'WPFTweaksGood,WPFTweaksBoom,WPFTweaksMissing' -ResultFile $res | Out-Null
+        Assert-Equal 2 $LASTEXITCODE 'exit code = number of failed tweaks'
+        Assert-Equal 'WPFTweaksGood' ((Get-Content -LiteralPath $applied) -join ',') 'good tweak really ran'
+        $r = @((Get-Content -LiteralPath $res -Raw | ConvertFrom-Json).Results)
+        Assert-Equal 3 $r.Count
+        Assert-True (($r | Where-Object Id -eq 'WPFTweaksGood').Ok)
+        Assert-Equal 'boom' ($r | Where-Object Id -eq 'WPFTweaksBoom').Message
+        Assert-Equal 'not in this WinUtil version' ($r | Where-Object Id -eq 'WPFTweaksMissing').Message
+    } finally { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
 It 'shipped external configs only contain allowed options' {
     foreach ($tool in @('winutil', 'win11debloat')) {
         foreach ($it in (Get-SFExternalItems $tool)) { Assert-Null (Test-SFExternalOption $tool $it.id) "$tool $($it.id)" }

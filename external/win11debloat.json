@@ -8,7 +8,6 @@
     { "id": "DisableLockscreenTips", "name": "No tips/ads on the lock screen", "presets": ["HighEnd", "MidRange"] },
     { "id": "DisableSettings365Ads", "name": "No Microsoft 365 ads in Settings", "presets": ["HighEnd", "MidRange"] },
     { "id": "DisableEdgeAds", "name": "No Edge ads and suggestions", "presets": ["HighEnd", "MidRange"] },
-    { "id": "DisableSearchHighlights", "name": "No 'search highlights' in the search box", "presets": ["HighEnd", "MidRange"] },
     { "id": "DisableDeviceAutoAppDownload", "name": "No automatic device app downloads", "presets": ["HighEnd", "MidRange"] },
     { "id": "DisableCopilot", "name": "Copilot off", "presets": ["HighEnd", "MidRange"] },
     { "id": "DisableRecall", "name": "Recall snapshots off", "presets": ["HighEnd", "MidRange"], "requires": ["Win11"] },

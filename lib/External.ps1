@@ -108,13 +108,37 @@ function Invoke-SFWinUtil {
     foreach ($id in $Ids) { $why = Test-SFExternalOption -Tool 'winutil' -Id $id; if ($why) { throw $why } }
     if ($DryRun) { Write-SFStatus 'DRYRUN' ('WinUtil would run: ' + ($Ids -join ', ')); return 0 }
     $tool = Get-SFExternalTool -Tool 'winutil' -Source $Source
-    $cfg = Join-Path $env:TEMP ('steadyframe-winutil-{0}.json' -f (Get-Date -Format 'yyyyMMddHHmmss'))
+    # not in %TEMP%: WinUtil's "delete temp files" tweak empties it while running
+    $work = if ($LogDir) { $LogDir } else { Split-Path -Parent $tool.Path }
+    if (-not (Test-Path -LiteralPath $work)) { New-Item -ItemType Directory -Path $work -Force | Out-Null }
+    $cfg = Join-Path $work 'winutil-config.json'
+    $resultFile = Join-Path $work 'winutil-results.json'
     Save-SFJson -Object @($Ids) -Path $cfg
     Write-SFStatus 'INFO' ('WinUtil {0} ({1}) sha256 {2}' -f $tool.Tag, $tool.Source, $tool.Sha256)
-    $argList = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"{0}"' -f $tool.Path), '-Config', ('"{0}"' -f $cfg))
+    $runner = Join-Path $script:SFLibRoot 'WinUtilRunner.ps1'
+    $argList = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"{0}"' -f $runner),
+        '-WinUtilPath', ('"{0}"' -f $tool.Path), '-ConfigFile', ('"{0}"' -f $cfg),
+        '-TweakIds', ($Ids -join ','), '-ResultFile', ('"{0}"' -f $resultFile))
     $p = Start-Process -FilePath 'powershell.exe' -ArgumentList $argList -Wait -PassThru -NoNewWindow
-    Remove-Item -LiteralPath $cfg -Force -ErrorAction SilentlyContinue
+    try { $Host.UI.RawUI.WindowTitle = 'SteadyFrame' } catch { }   # WinUtil renames the shared console
+    Write-SFWinUtilResults -ResultFile $resultFile
     return $p.ExitCode
+}
+
+function Write-SFWinUtilResults {
+    param([Parameter(Mandatory)][string]$ResultFile)
+    if (-not (Test-Path -LiteralPath $ResultFile)) {
+        Write-SFStatus 'FAIL' 'WinUtil stopped before reporting any results (see its log in %LOCALAPPDATA%\winutil\logs)'
+        return
+    }
+    foreach ($r in @((Read-SFJson $ResultFile).Results)) {
+        if ($r.Ok) {
+            $note = if ([int]$r.Errors -gt 0) { '  ({0} non-fatal errors along the way, usually files in use)' -f $r.Errors } else { '' }
+            Write-SFStatus 'APPLIED' ('WinUtil ' + $r.Id + $note)
+        } else {
+            Write-SFStatus 'FAIL' ('WinUtil ' + $r.Id + ': ' + $r.Message)
+        }
+    }
 }
 
 function Invoke-SFWin11Debloat {
