@@ -82,6 +82,66 @@
       "actions": [ { "type": "Service", "name": "WSearch", "startType": "Disabled" } ]
     },
     {
+      "id": "bg.audio-ducking-off",
+      "name": "Don't lower game audio during voice calls (audio ducking off)",
+      "tier": "A",
+      "why": "When Windows detects a call it turns everything else down by 80% by default, so your game gets quiet in Discord calls. Same as Sound settings > Communications > 'Do nothing'.",
+      "breaks": "",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "actions": [
+        { "type": "Registry", "path": "HKCU\\Software\\Microsoft\\Multimedia\\Audio", "name": "UserDuckingPreference", "kind": "DWord", "value": 3 }
+      ]
+    },
+    {
+      "id": "bg.browsers-background-off",
+      "name": "Edge and Chrome don't keep running after you close them",
+      "tier": "A",
+      "why": "Edge's startup boost and both browsers' background mode keep browser processes running with no window open. Uses the browsers' own documented policies. Their updaters are left alone, so they still get security updates.",
+      "breaks": "The browsers show 'managed by your organization' in their settings (that's how policies appear). No notifications from closed browser tabs.",
+      "presets": ["HighEnd", "MidRange"],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge", "name": "StartupBoostEnabled", "kind": "DWord", "value": 0 },
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge", "name": "BackgroundModeEnabled", "kind": "DWord", "value": 0 },
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Policies\\Google\\Chrome", "name": "BackgroundModeEnabled", "kind": "DWord", "value": 0 }
+      ]
+    },
+    {
+      "id": "bg.bluetooth-off",
+      "name": "Turn off Bluetooth services (only if you never use Bluetooth)",
+      "tier": "B",
+      "why": "Three always-on services for a radio some desktops never use.",
+      "breaks": "All Bluetooth: headsets, controllers, mice, phones. Undo it before pairing anything.",
+      "presets": [],
+      "actions": [
+        { "type": "Service", "name": "bthserv", "startType": "Disabled" },
+        { "type": "Service", "name": "BTAGService", "startType": "Disabled" },
+        { "type": "Service", "name": "BthAvctpSvc", "startType": "Disabled" }
+      ]
+    },
+    {
+      "id": "bg.error-reporting-off",
+      "name": "Turn off Windows Error Reporting",
+      "tier": "C",
+      "why": "Stops Windows from collecting and sending crash reports. Only does something when an app crashes.",
+      "breaks": "Crash reports to Microsoft and app developers.",
+      "presets": [],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Error Reporting", "name": "Disabled", "kind": "DWord", "value": 1 },
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Microsoft\\Windows\\Windows Error Reporting", "name": "Disabled", "kind": "DWord", "value": 1 }
+      ]
+    },
+    {
+      "id": "bg.fault-tolerant-heap-off",
+      "name": "Turn off the Fault Tolerant Heap",
+      "tier": "C",
+      "why": "After an app crashes a few times, Windows quietly applies memory fixes to it that cost a little speed. Turning this off stops that.",
+      "breaks": "An app that keeps crashing may crash more often.",
+      "presets": [],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Microsoft\\FTH", "name": "Enabled", "kind": "DWord", "value": 0 }
+      ]
+    },
+    {
       "id": "bg.sysmain-off",
       "name": "Disable SysMain (Superfetch) on SSD-only PCs",
       "tier": "B",

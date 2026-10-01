@@ -198,6 +198,12 @@ function Get-SFDiagnostics {
         $gtext = '{0} - driver {1}' -f $g.Name, $g.DriverVersion
         if ($age -ne $null) { $gtext += (' ({0} days old)' -f $age) }
         & $add (New-SFFinding 'GPU' 'Graphics card' $gtext $gs $(if ($gs -eq 'WARN') { 'Driver is over 6 months old. New drivers often fix stutter in recent games. For a clean install use DDU in Safe Mode, then the newest driver.' } else { '' }))
+        $msi = Get-SFRegistryValue (Get-SFMsiKey $g.PNPDeviceID) 'MSISupported'
+        if ($msi.Exists -and [int64]$msi.Value -eq 1) {
+            & $add (New-SFFinding 'GPU' 'Interrupt mode' 'MSI' 'OK')
+        } else {
+            & $add (New-SFFinding 'GPU' 'Interrupt mode' 'line-based (MSI off)' 'WARN' 'Advanced > "Graphics card: use MSI interrupts" can switch it (undo-able).')
+        }
     }
     $hags = Get-SFRegistryValue 'HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers' 'HwSchMode'
     $hagsText = if (-not $hags.Exists) { 'default' } elseif ([int64]$hags.Value -eq 2) { 'on' } else { 'off' }

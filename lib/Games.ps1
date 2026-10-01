@@ -104,13 +104,26 @@ function Get-SFGameCardLines {
     return $lines
 }
 
+function Get-SFDriverCards {
+    param([Parameter(Mandatory)]$Context, [switch]$All)
+    $cards = @((Read-SFJson (Join-Path (Get-SFRoot) 'games\games.json')).driverCards)
+    if ($All) { return $cards }
+    $gpus = @($Context.Gpus)
+    # an AMD iGPU next to an NVIDIA card shouldn't pull in the Adrenalin card
+    $amd = (@($gpus | Where-Object { $_ -match 'Radeon RX|Radeon Pro' }).Count -gt 0) -or
+        ((@($gpus | Where-Object { $_ -match 'Radeon' }).Count -gt 0) -and -not $Context.HasNvidia)
+    return @($cards | Where-Object { ($_.vendor -eq 'nvidia' -and $Context.HasNvidia) -or ($_.vendor -eq 'amd' -and $amd) })
+}
+
 function Write-SFGameCards {
     param([Parameter(Mandatory)]$Context, [switch]$All)
-    $games = @($Context.Games)
-    $defs = @(Get-SFGameDefinitions)
-    if ($All -or $games.Count -eq 0) {
-        if (-not $All) { Write-Host '  None of the supported games were found, showing all cards.' -ForegroundColor DarkGray }
-        $games = @($defs | ForEach-Object { [pscustomobject]@{ Definition = $_; Dir = '' } })
+    $games = @(@(Get-SFDriverCards -Context $Context -All:$All) | ForEach-Object { [pscustomobject]@{ Definition = $_; Dir = '' } })
+    $found = @($Context.Games)
+    if ($All -or $found.Count -eq 0) {
+        if (-not $All) { Write-Host '  None of the supported games were found, showing all game cards.' -ForegroundColor DarkGray }
+        $games += @(Get-SFGameDefinitions | ForEach-Object { [pscustomobject]@{ Definition = $_; Dir = '' } })
+    } else {
+        $games += $found
     }
     foreach ($g in $games) {
         $lines = Get-SFGameCardLines -Definition $g.Definition -Context $Context -Dir $g.Dir
@@ -125,9 +138,9 @@ function Write-SFGameCards {
 
 function Save-SFGameCards {
     param([Parameter(Mandatory)]$Context, [Parameter(Mandatory)][string]$Path)
-    $games = @($Context.Games)
+    $games = @(@(Get-SFDriverCards -Context $Context) | ForEach-Object { [pscustomobject]@{ Definition = $_; Dir = '' } }) + @($Context.Games)
     if ($games.Count -eq 0) { return $null }
-    $out = @("SteadyFrame game settings - $env:COMPUTERNAME - $(Get-Date -Format 'yyyy-MM-dd')", '')
+    $out = @("SteadyFrame game and driver settings - $env:COMPUTERNAME - $(Get-Date -Format 'yyyy-MM-dd')", '')
     foreach ($g in $games) { $out += (Get-SFGameCardLines -Definition $g.Definition -Context $Context -Dir $g.Dir); $out += ''; $out += '' }
     [System.IO.File]::WriteAllLines($Path, $out, (New-Object System.Text.UTF8Encoding $false))
     return $Path

@@ -69,6 +69,11 @@ function Get-SFPhysicalAdapters {
     return @(Get-NetAdapter -Physical -ErrorAction SilentlyContinue | Where-Object { $_.InterfaceDescription -notmatch $skip })
 }
 
+function Get-SFMsiKey {
+    param([Parameter(Mandatory)][string]$PnpDeviceId)
+    return ('HKLM\SYSTEM\CurrentControlSet\Enum\{0}\Device Parameters\Interrupt Management\MessageSignaledInterruptProperties' -f $PnpDeviceId)
+}
+
 # PnPCapabilities lives in the adapter's Control\Class\{net}\NNNN key, not under Services.
 function Get-SFNicClassKeys {
     $guids = @(Get-SFPhysicalAdapters | ForEach-Object { "$($_.InterfaceGuid)".ToLowerInvariant() })
@@ -106,6 +111,10 @@ function Expand-SFTemplate {
     }
     if ($Text -match '\{ActiveInterfaces\}') {
         $results = @(foreach ($r in $results) { foreach ($i in @($Context.ActiveInterfaces)) { $r.Replace('{ActiveInterfaces}', $i) } })
+    }
+    if ($Text -match '\{GpuMsiKeys\}') {
+        $mk = @(Get-SFProp $Context 'GpuPnpIds' @() | ForEach-Object { Get-SFMsiKey $_ })
+        $results = @(foreach ($r in $results) { foreach ($k in $mk) { $r.Replace('{GpuMsiKeys}', $k) } })
     }
     if ($Text -match '\{NicClassKeys\}') {
         $nk = @(Get-SFNicClassKeys)

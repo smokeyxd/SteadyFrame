@@ -214,6 +214,11 @@ function Start-Optimize {
         Write-Host '  Things that may stop working:' -ForegroundColor Yellow
         foreach ($b in $breaks) { Write-Host ('   - ' + $b) -ForegroundColor Yellow }
     }
+    $tierC = @($tweaks | Where-Object { $_.tier -eq 'C' })
+    if ($tierC.Count -gt 0) {
+        Write-Host ''
+        Write-Host ('  {0} tier C setting(s) picked. These may do nothing at all; compare 1% lows before and after.' -f $tierC.Count) -ForegroundColor Yellow
+    }
     Write-Host ''
     Write-Host '  Never touched: Defender protection, VBS / Memory integrity, Secure Boot, TPM, UAC, firewall, CPU mitigations.' -ForegroundColor Green
     Write-Host '  Undo: Revert.bat undoes SteadyFrame tweaks; the restore point undoes everything (rstrui.exe).' -ForegroundColor Green
@@ -273,7 +278,7 @@ while ($true) {
     Write-Host '  4) Optimize - Minimal (safest, no debloat tools)'
     Write-Host '  5) Custom (start from the recommendation, pick everything yourself)'
     Write-Host '  6) Undo a previous run'
-    Write-Host '  7) Game settings cards (TEKKEN 8, VALORANT, CS2)'
+    Write-Host '  7) Game and driver settings cards (TEKKEN 8, VALORANT, CS2, NVIDIA, AMD)'
     Write-Host '  0) Exit'
     if ($opts.DryRun) { Write-Host '  [dry run is ON]' -ForegroundColor White }
     $choice = Read-SFInput '  Choice: '

@@ -219,6 +219,7 @@ function Get-SFContext {
         IsIntelRaptor   = $raptor
         Microcode       = (Get-SFMicrocodeRevision)
         Gpus            = @($gpus | ForEach-Object { $_.Name })
+        GpuPnpIds       = @($gpus | Where-Object { $_.Name -notmatch 'Basic Display' } | ForEach-Object { $_.PNPDeviceID })
         HasNvidia       = (@($gpus | Where-Object { $_.Name -match 'NVIDIA' }).Count -gt 0)
         Ram             = $ram
         Disk            = $disk

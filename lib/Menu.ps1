@@ -36,8 +36,13 @@ function ConvertFrom-SFNumberList {
 function Show-SFChecklist {
     param([string]$Title, [Parameter(Mandatory)]$Rows)
     $rows = @($Rows)
+    $hasC = (@($rows | Where-Object { (Get-SFProp $_ 'Tag' '') -eq '[C]' }).Count -gt 0)
     while ($true) {
         Write-SFHeader $Title
+        if ($hasC) {
+            Write-Host '  [C] = popular tweaks with weak or no proof behind them. Some are placebo. They are here because' -ForegroundColor Yellow
+            Write-Host '  people ask for them, they are off by default, and nothing promises they help: benchmark before keeping one.' -ForegroundColor Yellow
+        }
         $section = $null
         for ($i = 0; $i -lt $rows.Count; $i++) {
             $r = $rows[$i]

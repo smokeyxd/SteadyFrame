@@ -29,6 +29,30 @@
       ]
     },
     {
+      "id": "sched.mmcss-nolazymode",
+      "name": "MMCSS: NoLazyMode and AlwaysOn",
+      "tier": "C",
+      "why": "Undocumented MMCSS values that tweak packs set so the multimedia scheduler never idles. Microsoft doesn't document them and there are no measurements.",
+      "breaks": "",
+      "presets": [],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile", "name": "NoLazyMode", "kind": "DWord", "value": 1 },
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile", "name": "AlwaysOn", "kind": "DWord", "value": 1 }
+      ]
+    },
+    {
+      "id": "sched.io-worker-priority",
+      "name": "Kernel I/O worker priority and foreground boost decay",
+      "tier": "C",
+      "why": "Raises the priority of passive I/O interrupt workers and keeps the foreground priority boost from decaying. Undocumented kernel values from tweak packs, no measurements.",
+      "breaks": "",
+      "presets": [],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\I/O System", "name": "PassiveIntRealTimeWorkerPriority", "kind": "DWord", "value": 18 },
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Control\\KernelVelocity", "name": "DisableFGBoostDecay", "kind": "DWord", "value": 1 }
+      ]
+    },
+    {
       "id": "sched.priority-separation",
       "name": "Win32PrioritySeparation = 0x26 (short, variable, 3x foreground)",
       "tier": "C",

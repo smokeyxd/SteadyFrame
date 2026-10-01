@@ -40,6 +40,7 @@ $script:SFGuardValueRules = @(
     @{ Name = 'DisableExceptionChainValidation'; Mode = 'Block' }
     @{ Name = 'Debugger'; Mode = 'Block' }
     @{ Name = 'GlobalFlag'; Mode = 'Block' }
+    @{ Name = 'DisableRawSecurity'; Mode = 'Block' }
     @{ Name = 'PagingFiles'; Mode = 'Block' }
     @{ Name = 'ExistingPageFiles'; Mode = 'Block' }
     @{ Name = 'DisableWindowsUpdateAccess'; Mode = 'Block' }
@@ -125,6 +126,13 @@ function Test-SFRegistryWrite {
                     if (-not $ok) { return "'$Name' may only be set to $($rule.Values -join '/')" }
                 }
             }
+        }
+    }
+    # device config: the only thing allowed under Enum is a device's MSI mode switch
+    $enum = 'HKLM\SYSTEM\CURRENTCONTROLSET\ENUM\'
+    if ($norm.StartsWith($enum)) {
+        if (-not $norm.EndsWith('\DEVICE PARAMETERS\INTERRUPT MANAGEMENT\MESSAGESIGNALEDINTERRUPTPROPERTIES') -or $Name -ne 'MSISupported') {
+            return 'only a device''s MSISupported value may be written under Enum'
         }
     }
     # IFEO is also how malware hijacks programs (Debugger=), so only <exe>\PerfOptions is allowed

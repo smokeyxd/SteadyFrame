@@ -13,9 +13,9 @@ $script:SFHiveShort = @{ LocalMachine = 'HKLM'; CurrentUser = 'HKCU'; ClassesRoo
 # Accepts HKLM:\x, HKLM\x, HKEY_LOCAL_MACHINE\x, Registry::HKEY_LOCAL_MACHINE\x
 function Split-SFRegistryPath {
     param([Parameter(Mandatory)][string]$Path)
+    # no '/' -> '\' conversion: '/' is a legal character in key names ("I/O System")
     $p = $Path -replace '^(?i)Registry::', ''
-    $p = $p -replace '/', '\'
-    $m = [regex]::Match($p, '^(?<hive>[A-Za-z_]+):?\\?(?<sub>.*)$')
+    $m =[regex]::Match($p, '^(?<hive>[A-Za-z_]+):?\\?(?<sub>.*)$')
     if (-not $m.Success) { throw "Invalid registry path: $Path" }
     $hive = $script:SFHiveMap[$m.Groups['hive'].Value.ToUpperInvariant()]
     if (-not $hive) { throw "Unknown registry hive in path: $Path" }

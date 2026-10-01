@@ -7,7 +7,8 @@ frame times.
 It won't turn a slow PC into a fast one. What it can do is fix setup mistakes (RAM running at stock
 speed, a monitor stuck at 60 Hz, leftovers from old "FPS booster" tools) and cut down on background
 stuff that causes random stutters. How much you notice depends on your PC, so the README explains how
-to measure it yourself.
+to measure it yourself. SteadyFrame doesn't promise better performance; it tries, and it tells you
+which settings have proof behind them and which don't.
 
 Everything it changes is shown to you first, and the changes can be undone.
 
@@ -44,7 +45,8 @@ The health check only reads. It looks for:
 
 - RAM running at default speed (XMP/EXPO off), a single RAM stick (single channel), less than 16 GB
 - Windows installed on a hard drive, a nearly full system drive
-- an old graphics driver, Resizable BAR off (NVIDIA), a monitor running below its max refresh rate
+- an old graphics driver, Resizable BAR off (NVIDIA), a graphics card not using MSI interrupts,
+  a monitor running below its max refresh rate
 - background apps known to cause stutter (Armoury Crate, iCUE, Nahimic, Wallpaper Engine and others)
 - leftovers from old tweak tools: page file disabled, forced HPET, CPU security fixes turned off,
   Windows Update disabled
@@ -56,7 +58,8 @@ The changes, grouped the same way as in the menu:
 - Gaming: Game Mode on, background game recording off, mouse acceleration off, the Windows 11 setting
   for windowed games
 - Background: you pick which startup apps to disable, Store apps stop running in the background,
-  telemetry services and tasks off, Windows Update stops uploading to other PCs
+  Edge and Chrome stop running after you close them, telemetry services and tasks off, Windows
+  Update stops uploading to other PCs, and Windows stops turning your game down during voice calls
 - Network: power saving on the network adapter off
 - Windows Update: big yearly updates are postponed, security updates keep installing, and no
   automatic restarts while you're signed in
@@ -72,12 +75,24 @@ see it. The summary screen lists everything that could stop working before you c
 Every SteadyFrame setting has a letter next to it in the menu. A means it's backed by testing or
 documented by Microsoft, AMD, Intel or NVIDIA, and it's on by default. B means it helps on some PCs,
 so it's only turned on when it applies to yours. C means it's popular online but the evidence is weak
-or it's placebo. C settings are hidden unless you open Advanced, are never on by default, and their
-description says so.
+or it's placebo.
 
-Some popular tweaks are left out on purpose because they make things worse: turning off TCP
-auto-tuning (slower downloads), disabling IPv6 or Teredo (breaks Xbox networking), forcing HPET,
-disabling the page file.
+Tier C is where the popular tweak-pack settings live: smaller mouse/keyboard input buffers, network
+adapter interrupt moderation and flow control off, socket (AFD) values, undocumented MMCSS and kernel
+values, Nagle off, timer and priority tweaks, faster shutdown. They're included because people ask
+for them, not because they're proven. They're hidden unless you open Advanced, never on by default,
+and the menu says so above the list. If you try one, benchmark it.
+
+Some popular tweaks are left out on purpose because they make things worse or break things:
+- turning off Windows Update or its services, or firewall rules that block IP ranges
+- turning off CPU C-states, core parking or power throttling for every PC (this hurts the 7950X3D and
+  9950X3D and Intel CPUs with E-cores; SteadyFrame picks the power plan per CPU instead)
+- turning off GPU power states and thermal throttling through driver registry keys
+- turning off network RSS or checksum offload (moves work onto the CPU), shrinking socket buffers
+  (slower downloads), turning off TCP auto-tuning, disabling IPv6 or Teredo (breaks Xbox networking)
+- disabling services like ClipSVC, TokenBroker or wlidsvc (breaks Microsoft Store, Game Pass and
+  Xbox sign-in) or XboxGipSvc (breaks Xbox controllers)
+- forcing HPET, disabling the page file, turning Game Mode off
 
 ### What it never touches
 
@@ -111,6 +126,10 @@ If TEKKEN 8, VALORANT or Counter-Strike 2 is installed, SteadyFrame:
 - shows a settings card for each game (main menu option 7): the in-game and driver settings that
   help frame pacing, each with the reason, plus popular tweaks that don't help. The card is also
   saved as `game-settings.txt` in the run folder, easy to send to a friend.
+- also shows a card for your graphics driver (NVIDIA Control Panel or AMD Adrenalin): shader cache
+  size, low latency, G-SYNC/FreeSync setup and the settings that make frame times uneven. These are
+  steps you click yourself; SteadyFrame doesn't change driver settings or bundle third-party tools
+  for it.
 - CS2 only, in Advanced: it can add an fps cap to your `autoexec.cfg`. It asks for the number first,
   keeps your own lines, and undo removes only what it added.
 

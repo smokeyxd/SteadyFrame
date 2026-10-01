@@ -20,6 +20,19 @@
       ]
     },
     {
+      "id": "ui.snappy-menus-shutdown",
+      "name": "Snappier menus and faster shutdown",
+      "tier": "C",
+      "why": "Menus open without the 400 ms delay, and Windows waits 2 seconds instead of 5 for hung apps and services at shutdown. Feels quicker; does nothing in games.",
+      "breaks": "Apps that are slow to save when you shut down get less time to do it.",
+      "presets": [],
+      "actions": [
+        { "type": "Registry", "path": "HKCU\\Control Panel\\Desktop", "name": "MenuShowDelay", "kind": "String", "value": "0" },
+        { "type": "Registry", "path": "HKCU\\Control Panel\\Desktop", "name": "HungAppTimeout", "kind": "String", "value": "2000" },
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Control", "name": "WaitToKillServiceTimeout", "kind": "String", "value": "2000" }
+      ]
+    },
+    {
       "id": "ui.transparency-off",
       "name": "Turn off transparency effects",
       "tier": "B",

@@ -30,7 +30,7 @@ function New-FakeContext {
         Computer = 'TEST'; IsAdmin = $true; OsMajor = 11; Build = 26100; UBR = 1; DisplayVersion = '24H2'; ProductVersion = 'Windows 11'
         Edition = 'Professional'; IsHome = $false; FormFactor = 'Desktop'; CpuName = 'AMD Ryzen 7 9800X3D'; CpuCores = 8; CpuThreads = 16
         IsAmd = $true; IsIntel = $false; IsDualCcdX3D = $false; IsX3D = $true; IsIntelRaptor = $false; Microcode = $null
-        Gpus = @('NVIDIA GeForce RTX 5070 Ti'); HasNvidia = $true
+        Gpus = @('NVIDIA GeForce RTX 5070 Ti'); HasNvidia = $true; GpuPnpIds = @('PCI\VEN_10DE&DEV_2C05&SUBSYS_00000000&REV_A1\4&1')
         Ram = [pscustomobject]@{ TotalGB = 32; TotalKB = 33554432; Sticks = 2; Type = 'DDR5'; SpeedMTs = 6000; MixedSizes = $false }
         Disk = [pscustomobject]@{ SystemDisk = 'NVMe SSD'; SsdOnly = $true; FreeGB = 500; SizeGB = 1000 }
         HasPrinter = $false; BitLockerOn = $false; ActiveInterfaces = @('{11111111-2222-3333-4444-555555555555}')
@@ -50,6 +50,18 @@ It 'normalizes every registry path form' {
     Assert-Equal 'HKLM\SOFTWARE\X' (ConvertTo-SFRegistryKeyName 'HKEY_LOCAL_MACHINE\SOFTWARE\X')
     Assert-Equal 'HKLM\SOFTWARE\X' (ConvertTo-SFRegistryKeyName 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\X')
     Assert-Equal 'HKCU\Software\Y' (ConvertTo-SFRegistryKeyName 'hkcu:\Software\Y\')
+    Assert-Equal 'HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\I/O System' (ConvertTo-SFRegistryKeyName 'HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\I/O System') 'slash is part of the key name'
+}
+
+It 'writes and reverts a key whose name contains a slash' {
+    Reset-Sandbox
+    $j = New-TempJournal
+    [void](Invoke-SFRegistryChange -TweakId 'slash' -Path "$T\I/O System" -Name 'V' -Kind 'DWord' -Value 18 -Journal $j)
+    # PowerShell's Test-Path treats I/O and I\O as the same key, so ask .NET directly
+    $kids = (Get-Item -LiteralPath 'HKCU:\Software\SteadyFrame-Test').GetSubKeyNames()
+    Assert-Equal 'I/O System' ($kids -join '|') 'one child key, named with the slash'
+    [void](Undo-SFJournalEntry -Entry $j.Entries[0])
+    Assert-True (-not (Test-SFRegistryKey $T)) 'cleaned up'
 }
 
 It 'round-trips DWord 0xFFFFFFFF, QWord, Binary, MultiString, ExpandString' {
@@ -223,6 +235,17 @@ It 'external tool options are filtered' {
     Assert-NotNull (Test-SFExternalOption 'win11debloat' 'DisableBitlockerAutoEncryption')
     Assert-NotNull (Test-SFExternalOption 'win11debloat' 'Sysprep')
     Assert-Null (Test-SFExternalOption 'win11debloat' 'RemoveApps')
+}
+
+It 'device registry: only the GPU MSI switch is writable; raw socket security stays on' {
+    $msiKey = Get-SFMsiKey 'PCI\VEN_10DE&DEV_2C05\4&1'
+    Assert-Null (Test-SFRegistryWrite $msiKey 'MSISupported' 1)
+    Assert-NotNull (Test-SFRegistryWrite $msiKey 'MessageNumberLimit' 1) 'other values blocked'
+    Assert-NotNull (Test-SFRegistryWrite 'HKLM\SYSTEM\CurrentControlSet\Enum\PCI\VEN_10DE\4&1\Device Parameters' 'Anything' 1)
+    Assert-NotNull (Test-SFRegistryWrite 'HKLM\SYSTEM\CurrentControlSet\Services\AFD\Parameters' 'DisableRawSecurity' 1)
+    $keys = @(Expand-SFTemplate '{GpuMsiKeys}' (New-FakeContext))
+    Assert-Equal 1 $keys.Count
+    Assert-True ($keys[0] -like 'HKLM\SYSTEM\CurrentControlSet\Enum\PCI\VEN_10DE*\MessageSignaledInterruptProperties')
 }
 
 It 'engine refuses a blocked write and leaves the registry alone' {
@@ -467,9 +490,17 @@ It 'cards show NVIDIA-only lines only on NVIDIA PCs' {
 }
 
 It 'every card item has a setting and a reason' {
-    foreach ($g in (Get-SFGameDefinitions)) {
+    foreach ($g in @(Get-SFGameDefinitions) + @(Get-SFDriverCards -Context (New-FakeContext) -All)) {
         foreach ($s in $g.card) { foreach ($it in $s.items) { Assert-True ($it.do -and $it.why) "$($g.id) / $($s.section)" } }
     }
+}
+
+It 'driver cards follow the graphics card brand' {
+    $ids = { param($c) (@(Get-SFDriverCards -Context $c | ForEach-Object { $_.id }) -join ',') }
+    Assert-Equal 'nvidia' (& $ids (New-FakeContext))
+    Assert-Equal 'amd' (& $ids (New-FakeContext @{ HasNvidia = $false; Gpus = @('AMD Radeon RX 7800 XT') }))
+    Assert-Equal 'nvidia' (& $ids (New-FakeContext @{ Gpus = @('NVIDIA GeForce RTX 4070', 'AMD Radeon(TM) Graphics') })) 'Ryzen iGPU next to NVIDIA'
+    Assert-Equal '' (& $ids (New-FakeContext @{ HasNvidia = $false; Gpus = @('Intel(R) Arc(TM) A750 Graphics') }))
 }
 
 It 'GPU preference writes one value per detected game exe' {

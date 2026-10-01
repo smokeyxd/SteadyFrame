@@ -1,0 +1,20 @@
+{
+  "category": "Graphics card",
+  "order": 35,
+  "tweaks": [
+    {
+      "id": "gpu.msi-mode",
+      "name": "Graphics card: use MSI interrupts",
+      "tier": "B",
+      "advanced": true,
+      "why": "Message Signaled Interrupts avoid the old shared interrupt lines and can lower driver latency. Most cards from the last several years already use MSI (the health check shows yours); this only changes cards that don't. Applies after a reboot, and a driver reinstall can reset it.",
+      "breaks": "Very old cards without MSI support can fail to start. Undo it with Revert.bat (or from Safe Mode).",
+      "source": "https://github.com/valleyofdoom/PC-Tuning",
+      "presets": [],
+      "requires": ["Desktop"],
+      "actions": [
+        { "type": "Registry", "path": "{GpuMsiKeys}", "name": "MSISupported", "kind": "DWord", "value": 1 }
+      ]
+    }
+  ]
+}

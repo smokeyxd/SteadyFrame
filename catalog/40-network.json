@@ -25,6 +25,40 @@
       ]
     },
     {
+      "id": "net.interrupt-moderation-off",
+      "name": "Network adapter: interrupt moderation off",
+      "tier": "C",
+      "why": "The adapter stops batching packets into fewer interrupts. Can shave microseconds at the cost of more CPU interrupts; djdallmann's testing found 'Medium' (often the default) the best balance for games.",
+      "breaks": "",
+      "source": "https://github.com/djdallmann/GamingPCSetup/blob/master/CONTENT/RESEARCH/NETWORK/README.md",
+      "presets": [],
+      "requires": ["Desktop"],
+      "actions": [ { "type": "NetAdapterProperty", "keyword": "*InterruptModeration", "value": "0" } ]
+    },
+    {
+      "id": "net.flow-control-off",
+      "name": "Network adapter: flow control off",
+      "tier": "C",
+      "why": "Flow control lets the adapter and router pause each other when buffers fill. Gaming traffic is far too small to trigger it.",
+      "breaks": "",
+      "presets": [],
+      "requires": ["Desktop"],
+      "actions": [ { "type": "NetAdapterProperty", "keyword": "*FlowControl", "value": "0" } ]
+    },
+    {
+      "id": "net.afd-tweaks",
+      "name": "Windows socket (AFD) tweaks from popular network packs",
+      "tier": "C",
+      "why": "Undocumented settings for the Windows socket driver: a larger fast-path size for UDP sends and push-bit / send-buffering behavior. No measurements behind them. The pack versions that shrink socket buffers (slower downloads) or turn off raw socket security are left out.",
+      "breaks": "",
+      "presets": [],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Services\\AFD\\Parameters", "name": "FastSendDatagramThreshold", "kind": "DWord", "value": 16384 },
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Services\\AFD\\Parameters", "name": "IgnorePushBitOnReceives", "kind": "DWord", "value": 1 },
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Services\\AFD\\Parameters", "name": "NonBlockingSendSpecialBuffering", "kind": "DWord", "value": 1 }
+      ]
+    },
+    {
       "id": "net.nagle-off",
       "name": "Disable Nagle / delayed ACK (TcpAckFrequency, TCPNoDelay)",
       "tier": "C",

@@ -116,7 +116,7 @@ function Invoke-SFOptimizeCore {
     $cards = Save-SFGameCards -Context $Context -Path (Join-Path $RunDir 'game-settings.txt')
     if ($cards) {
         Write-SFHeader 'Games'
-        Write-SFStatus 'INFO' ('In-game settings for your games: ' + $cards + '  (main menu option 7 shows them)')
+        Write-SFStatus 'INFO' ('Game and driver settings: ' + $cards + '  (main menu option 7 shows them)')
     }
 
     $counts = @{}

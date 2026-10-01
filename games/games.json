@@ -1,5 +1,64 @@
 {
-  "_readme": "Supported games: how to find them and the settings card shown for each. Card items: 'do' = the setting, 'why' = the reason, optional 'only' = nvidia | amd. Keep every line backed by testing or the developer; put unproven ideas under 'Try and measure'.",
+  "_readme": "Supported games: how to find them and the settings card shown for each. Card items: 'do' = the setting, 'why' = the reason, optional 'only' = nvidia | amd. Keep every line backed by testing or the developer; put unproven ideas under 'Try and measure'. driverCards are shown when that GPU brand is installed.",
+  "driverCards": [
+    {
+      "id": "nvidia",
+      "name": "NVIDIA Control Panel (applies to every game)",
+      "vendor": "nvidia",
+      "card": [
+        {
+          "section": "Manage 3D settings > Global Settings",
+          "items": [
+            { "do": "Shader Cache Size: Unlimited (or 10 GB+ if disk space is tight)", "why": "When the cache fills up the driver throws compiled shaders away and games compile them again mid-match. That's a classic source of stutter after updates and in big games." },
+            { "do": "Low Latency Mode: On", "why": "Keeps the render queue at one frame in games without Reflex. Games with NVIDIA Reflex ignore this and use Reflex instead." },
+            { "do": "Preferred refresh rate: Highest available", "why": "Games that don't pick a refresh rate get the monitor's maximum instead of 60 Hz." },
+            { "do": "Power management mode: leave Normal globally; use Prefer maximum performance per game for light, capped games", "why": "Normal is fine for demanding games. Light games capped at 60 (fighting games) can let the GPU downclock between frames." }
+          ]
+        },
+        {
+          "section": "G-SYNC / FreeSync monitor",
+          "items": [
+            { "do": "G-SYNC on, Vertical sync On in the control panel (Off in game), and cap FPS about 3 below your refresh rate (or use Reflex)", "why": "Blur Busters' tested setup: no tearing, and the cap keeps you inside the G-SYNC range so VSync never adds its lag." }
+          ]
+        },
+        {
+          "section": "Driver installs",
+          "items": [
+            { "do": "Clean install when switching driver branches or when stutter starts after an update (DDU in Safe Mode, or the installer's clean option)", "why": "Leftover profiles and old shader caches from previous drivers are a common stutter cause." }
+          ]
+        }
+      ],
+      "sources": [
+        "https://blurbusters.com/gsync/gsync101-input-lag-tests-and-settings/"
+      ]
+    },
+    {
+      "id": "amd",
+      "name": "AMD Software: Adrenalin (applies to every game)",
+      "vendor": "amd",
+      "card": [
+        {
+          "section": "Gaming > Graphics (global)",
+          "items": [
+            { "do": "Radeon Anti-Lag: On (Anti-Lag 2 is used automatically in games that support it)", "why": "AMD's way of keeping the render queue short; lowers input lag." },
+            { "do": "Radeon Chill: Off", "why": "Chill lowers the frame rate on purpose when you're not moving the mouse, which makes frame times uneven." },
+            { "do": "Radeon Boost: Off", "why": "Boost drops the resolution during fast motion, which changes frame times and image quality mid-fight." },
+            { "do": "Enhanced Sync: Off, unless you've tested it on your setup", "why": "Known to cause stutter or black screens on some systems." },
+            { "do": "Wait for Vertical Refresh: Off, unless application specifies", "why": "Use the in-game cap and FreeSync instead of forced VSync." }
+          ]
+        },
+        {
+          "section": "Gaming > Display",
+          "items": [
+            { "do": "AMD FreeSync: On if the monitor supports it, and cap FPS a few below the refresh rate", "why": "Same idea as G-SYNC: no tearing without VSync's input lag while you stay in range." }
+          ]
+        }
+      ],
+      "sources": [
+        "https://www.amd.com/en/products/software/adrenalin/radeon-software-anti-lag.html"
+      ]
+    }
+  ],
   "games": [
     {
       "id": "tekken8",

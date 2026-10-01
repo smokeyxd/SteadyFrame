@@ -54,6 +54,18 @@
       ]
     },
     {
+      "id": "gaming.input-queue-size",
+      "name": "Smaller mouse and keyboard input buffers (data queue size 50)",
+      "tier": "C",
+      "why": "Lowers how many input events Windows queues per device from 100 to 50. The queue only fills when the PC can't keep up, so there's no measured latency gain. Very small values can drop inputs on 4000-8000 Hz mice. Applies after a reboot.",
+      "breaks": "",
+      "presets": [],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Services\\mouclass\\Parameters", "name": "MouseDataQueueSize", "kind": "DWord", "value": 50 },
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Services\\kbdclass\\Parameters", "name": "KeyboardDataQueueSize", "kind": "DWord", "value": 50 }
+      ]
+    },
+    {
       "id": "gaming.hags-on",
       "name": "Hardware-accelerated GPU scheduling: ON",
       "tier": "B",
