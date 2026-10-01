@@ -1,0 +1,151 @@
+# Runs Chris Titus WinUtil and Raphire Win11Debloat with curated options.
+# Default source is a pinned, reviewed release verified by SHA256 before it
+# runs. Downloads are cached in tools\cache so a USB copy works offline.
+
+function Get-SFExternalPaths {
+    $root = Get-SFRoot
+    return [pscustomobject]@{
+        Pins     = (Join-Path $root 'external\pins.json')
+        WinUtil  = (Join-Path $root 'external\winutil.json')
+        W11D     = (Join-Path $root 'external\win11debloat.json')
+        Cache    = (Join-Path $root 'tools\cache')
+    }
+}
+
+function Get-SFFileSha256 {
+    param([Parameter(Mandatory)][string]$Path)
+    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+
+function Invoke-SFDownload {
+    param([Parameter(Mandatory)][string]$Url, [Parameter(Mandatory)][string]$OutFile)
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    $tmp = $OutFile + '.part'
+    $old = $ProgressPreference
+    $ProgressPreference = 'SilentlyContinue'
+    try { Invoke-WebRequest -Uri $Url -OutFile $tmp -UseBasicParsing -ErrorAction Stop }
+    finally { $ProgressPreference = $old }
+    Move-Item -LiteralPath $tmp -Destination $OutFile -Force
+}
+
+# Returns @{ Path; Sha256; Tag; Source } for a ready-to-run, verified file.
+function Get-SFExternalTool {
+    param([Parameter(Mandatory)][ValidateSet('winutil', 'win11debloat')][string]$Tool, [ValidateSet('Pinned', 'Latest')][string]$Source = 'Pinned')
+    $paths = Get-SFExternalPaths
+    $pins = Read-SFJson $paths.Pins
+    $pin = Get-SFProp $pins $Tool
+    if (-not (Test-Path -LiteralPath $paths.Cache)) { New-Item -ItemType Directory -Path $paths.Cache -Force | Out-Null }
+
+    if ($Source -eq 'Pinned') {
+        $file = Join-Path $paths.Cache $pin.file
+        if (Test-Path -LiteralPath $file) {
+            if ((Get-SFFileSha256 $file) -eq $pin.sha256.ToLowerInvariant()) {
+                return [pscustomobject]@{ Path = $file; Sha256 = $pin.sha256; Tag = $pin.tag; Source = 'Pinned (cached)' }
+            }
+            Remove-Item -LiteralPath $file -Force
+        }
+        Invoke-SFDownload -Url $pin.url -OutFile $file
+        $hash = Get-SFFileSha256 $file
+        if ($hash -ne $pin.sha256.ToLowerInvariant()) {
+            Remove-Item -LiteralPath $file -Force
+            throw ("SHA256 mismatch for {0} {1}. Expected {2}, got {3}. The download was deleted and NOT run." -f $Tool, $pin.tag, $pin.sha256, $hash)
+        }
+        return [pscustomobject]@{ Path = $file; Sha256 = $hash; Tag = $pin.tag; Source = 'Pinned' }
+    }
+
+    # Latest: no hash to compare against, so log exactly what ran.
+    $url = $pin.latestUrl
+    $tag = 'latest'
+    if ($Tool -eq 'win11debloat') {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+        $rel = Invoke-RestMethod -Uri $pin.latestApi -UseBasicParsing -ErrorAction Stop
+        $tag = $rel.tag_name
+        $url = 'https://github.com/Raphire/Win11Debloat/archive/refs/tags/{0}.zip' -f $tag
+    }
+    $ext = [IO.Path]::GetExtension($pin.file)
+    $file = Join-Path $paths.Cache ('{0}-latest{1}' -f $Tool, $ext)
+    Invoke-SFDownload -Url $url -OutFile $file
+    $hash = Get-SFFileSha256 $file
+    Write-SFStatus 'WARN' ('{0}: running LATEST ({1}) without a pinned hash. SHA256 {2}' -f $Tool, $tag, $hash)
+    return [pscustomobject]@{ Path = $file; Sha256 = $hash; Tag = $tag; Source = 'Latest' }
+}
+
+function Get-SFExternalItems {
+    param([Parameter(Mandatory)][ValidateSet('winutil', 'win11debloat')][string]$Tool)
+    $paths = Get-SFExternalPaths
+    $cfgPath = if ($Tool -eq 'winutil') { $paths.WinUtil } else { $paths.W11D }
+    $cfg = Read-SFJson $cfgPath
+    return @($cfg.items)
+}
+
+# Rows like Resolve-SFSelection, for the external tool checklists.
+function Resolve-SFExternalSelection {
+    param(
+        [Parameter(Mandatory)][ValidateSet('winutil', 'win11debloat')][string]$Tool, [Parameter(Mandatory)]$Context,
+        [string]$Preset = 'HighEnd', [string[]]$Include = @(), [string[]]$Exclude = @(), [switch]$ShowAll
+    )
+    $basePreset = if ($Preset -eq 'Custom') { $Context.SuggestedPreset } else { $Preset }
+    $rows = foreach ($it in (Get-SFExternalItems $Tool)) {
+        $why = Test-SFExternalOption -Tool $Tool -Id $it.id
+        $applies = $true
+        $reason = ''
+        if ($why) { $applies = $false; $reason = $why }
+        foreach ($r in @(Get-SFProp $it 'requires' @())) {
+            if ($applies -and -not (Test-SFRequirement $r $Context)) { $applies = $false; $reason = (Get-SFRequirementText $r) }
+        }
+        $sel = ($basePreset -in @(Get-SFProp $it 'presets' @()))
+        if ($Include -contains $it.id) { $sel = $true }
+        if ($Exclude -contains $it.id) { $sel = $false }
+        if (-not $applies) { $sel = $false }
+        $adv = [bool](Get-SFProp $it 'advanced' $false)
+        [pscustomobject]@{
+            Id = $it.id; Item = $it; Tool = $Tool; Applies = $applies; Reason = $reason; Selected = $sel
+            Visible = ($ShowAll -or -not $adv -or $sel); Advanced = $adv
+        }
+    }
+    return @($rows)
+}
+
+function Invoke-SFWinUtil {
+    param([Parameter(Mandatory)][string[]]$Ids, [ValidateSet('Pinned', 'Latest')][string]$Source = 'Pinned', [string]$LogDir, [switch]$DryRun)
+    foreach ($id in $Ids) { $why = Test-SFExternalOption -Tool 'winutil' -Id $id; if ($why) { throw $why } }
+    if ($DryRun) { Write-SFStatus 'DRYRUN' ('WinUtil would run: ' + ($Ids -join ', ')); return 0 }
+    $tool = Get-SFExternalTool -Tool 'winutil' -Source $Source
+    $cfg = Join-Path $env:TEMP ('steadyframe-winutil-{0}.json' -f (Get-Date -Format 'yyyyMMddHHmmss'))
+    Save-SFJson -Object @($Ids) -Path $cfg
+    Write-SFStatus 'INFO' ('WinUtil {0} ({1}) sha256 {2}' -f $tool.Tag, $tool.Source, $tool.Sha256)
+    $argList = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"{0}"' -f $tool.Path), '-Config', ('"{0}"' -f $cfg))
+    $p = Start-Process -FilePath 'powershell.exe' -ArgumentList $argList -Wait -PassThru -NoNewWindow
+    Remove-Item -LiteralPath $cfg -Force -ErrorAction SilentlyContinue
+    return $p.ExitCode
+}
+
+function Invoke-SFWin11Debloat {
+    param([Parameter(Mandatory)][string[]]$Flags, [ValidateSet('Pinned', 'Latest')][string]$Source = 'Pinned', [string]$LogDir, [switch]$DryRun)
+    foreach ($fl in $Flags) { $why = Test-SFExternalOption -Tool 'win11debloat' -Id $fl; if ($why) { throw $why } }
+    if ($DryRun) { Write-SFStatus 'DRYRUN' ('Win11Debloat would run: -' + ($Flags -join ' -')); return 0 }
+    $tool = Get-SFExternalTool -Tool 'win11debloat' -Source $Source
+    $dest = Join-Path (Split-Path -Parent $tool.Path) ('win11debloat-' + $tool.Tag)
+    if (Test-Path -LiteralPath $dest) { Remove-Item -LiteralPath $dest -Recurse -Force }
+    Expand-Archive -LiteralPath $tool.Path -DestinationPath $dest -Force
+    $entry = Get-ChildItem -LiteralPath $dest -Recurse -Filter 'Win11Debloat.ps1' | Select-Object -First 1
+    if (-not $entry) { throw 'Win11Debloat.ps1 not found in the downloaded archive' }
+    Get-ChildItem -LiteralPath $dest -Recurse -File | Unblock-File -ErrorAction SilentlyContinue
+    Write-SFStatus 'INFO' ('Win11Debloat {0} ({1}) sha256 {2}' -f $tool.Tag, $tool.Source, $tool.Sha256)
+    $argList = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"{0}"' -f $entry.FullName), '-Silent')
+    if ($LogDir) {
+        if (-not (Test-Path -LiteralPath $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
+        $argList += @('-LogPath', ('"{0}"' -f $LogDir))
+    }
+    $argList += @($Flags | ForEach-Object { '-' + $_ })
+    $p = Start-Process -FilePath 'powershell.exe' -ArgumentList $argList -Wait -PassThru -NoNewWindow
+    return $p.ExitCode
+}
+
+# Pre-download both pinned tools into tools\cache (for offline/USB use).
+function Invoke-SFPrefetch {
+    foreach ($t in @('winutil', 'win11debloat')) {
+        $r = Get-SFExternalTool -Tool $t -Source 'Pinned'
+        Write-SFStatus 'OK' ('{0} {1} cached: {2}' -f $t, $r.Tag, $r.Path)
+    }
+}

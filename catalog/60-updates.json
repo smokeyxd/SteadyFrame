@@ -1,0 +1,73 @@
+{
+  "category": "Windows Update",
+  "order": 70,
+  "tweaks": [
+    {
+      "id": "updates.defer-feature",
+      "name": "Update policy: defer big feature updates, keep security updates (recommended)",
+      "tier": "A",
+      "group": "updatePolicy",
+      "why": "Big yearly feature updates are when drivers and settings break. This keeps the current Windows version for up to a year while monthly security updates keep installing. On Home edition (no deferral policy) it pins the current version instead.",
+      "breaks": "",
+      "presets": [],
+      "actions": [
+        { "type": "Registry", "requires": ["!HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "DeferFeatureUpdates", "kind": "DWord", "value": 1 },
+        { "type": "Registry", "requires": ["!HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "DeferFeatureUpdatesPeriodInDays", "kind": "DWord", "value": 365 },
+        { "type": "Registry", "requires": ["HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "TargetReleaseVersion", "kind": "DWord", "value": 1 },
+        { "type": "Registry", "requires": ["HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "ProductVersion", "kind": "String", "value": "{ProductVersion}" },
+        { "type": "Registry", "requires": ["HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "TargetReleaseVersionInfo", "kind": "String", "value": "{DisplayVersion}" }
+      ]
+    },
+    {
+      "id": "updates.security-only",
+      "name": "Update policy: security-focused (Talon style)",
+      "tier": "B",
+      "group": "updatePolicy",
+      "why": "Feature updates deferred as above, monthly quality updates delayed 4 days (so bad patches get pulled first), and Windows Update stops installing drivers (you manage GPU drivers yourself).",
+      "breaks": "You must update drivers yourself.",
+      "presets": [],
+      "actions": [
+        { "type": "Registry", "requires": ["!HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "DeferFeatureUpdates", "kind": "DWord", "value": 1 },
+        { "type": "Registry", "requires": ["!HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "DeferFeatureUpdatesPeriodInDays", "kind": "DWord", "value": 365 },
+        { "type": "Registry", "requires": ["!HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "DeferQualityUpdates", "kind": "DWord", "value": 1 },
+        { "type": "Registry", "requires": ["!HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "DeferQualityUpdatesPeriodInDays", "kind": "DWord", "value": 4 },
+        { "type": "Registry", "requires": ["HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "TargetReleaseVersion", "kind": "DWord", "value": 1 },
+        { "type": "Registry", "requires": ["HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "ProductVersion", "kind": "String", "value": "{ProductVersion}" },
+        { "type": "Registry", "requires": ["HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "TargetReleaseVersionInfo", "kind": "String", "value": "{DisplayVersion}" },
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "ExcludeWUDriversInQualityUpdate", "kind": "DWord", "value": 1 }
+      ]
+    },
+    {
+      "id": "updates.leave",
+      "name": "Update policy: leave Windows Update alone",
+      "tier": "A",
+      "group": "updatePolicy",
+      "why": "No Windows Update changes at all.",
+      "breaks": "",
+      "presets": [],
+      "actions": []
+    },
+    {
+      "id": "updates.no-auto-reboot",
+      "name": "No automatic restarts while you're signed in",
+      "tier": "A",
+      "why": "Windows won't reboot by itself while you're signed in (no surprise restart mid-match). You still get the 'restart to finish updating' prompt.",
+      "breaks": "",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU", "name": "NoAutoRebootWithLoggedOnUsers", "kind": "DWord", "value": 1 }
+      ]
+    },
+    {
+      "id": "updates.exclude-drivers",
+      "name": "Don't let Windows Update install drivers",
+      "tier": "B",
+      "why": "Stops Windows Update from replacing your GPU/chipset drivers with older Microsoft-packaged versions.",
+      "breaks": "You must update drivers yourself.",
+      "presets": [],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "ExcludeWUDriversInQualityUpdate", "kind": "DWord", "value": 1 }
+      ]
+    }
+  ]
+}

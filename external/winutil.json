@@ -1,0 +1,23 @@
+{
+  "_readme": "WinUtil tweaks passed via -Config (flat list of IDs). 'presets' = which presets pick it by default. 'advanced' items are hidden unless you open Advanced. IDs blocked by lib/Guard.ps1 are refused even if listed here. Reviewed against WinUtil 26.08.19.",
+  "items": [
+    { "id": "WPFTweaksTelemetry", "name": "Telemetry off (also sets Defender sample submission to 'never send' - protection stays on)", "presets": ["HighEnd", "MidRange"] },
+    { "id": "WPFTweaksActivity", "name": "Activity history off", "presets": ["HighEnd", "MidRange"] },
+    { "id": "WPFTweaksConsumerFeatures", "name": "No auto-installed sponsored apps (Candy Crush etc.)", "presets": ["HighEnd", "MidRange"] },
+    { "id": "WPFTweaksWPBT", "name": "Block firmware-injected OEM installers (WPBT: Armoury Crate etc. auto-install)", "presets": ["HighEnd", "MidRange"] },
+    { "id": "WPFTweaksPreventDeviceMetadataFromNetwork", "name": "No auto-downloaded device companion apps", "presets": ["HighEnd", "MidRange"] },
+    { "id": "WPFTweaksServices", "name": "Set non-essential services to Manual", "presets": ["HighEnd", "MidRange"], "breaks": "Mobile Hotspot (SharedAccess) and Offline Files get disabled; also sets SvcHostSplitThresholdInKB" },
+    { "id": "WPFTweaksLocation", "name": "Location tracking off", "presets": ["HighEnd", "MidRange"], "breaks": "Apps can't use your location (Weather, Maps, Find my device)" },
+    { "id": "WPFTweaksDisableExplorerAutoDiscovery", "name": "Explorer folder-type auto discovery off (faster big folders)", "presets": ["HighEnd", "MidRange"] },
+    { "id": "WPFTweaksDeleteTempFiles", "name": "Delete temporary files", "presets": ["HighEnd", "MidRange"] },
+    { "id": "WPFTweaksEndTaskOnTaskbar", "name": "'End task' on taskbar right-click", "presets": ["HighEnd", "MidRange"] },
+    { "id": "WPFTweaksWidget", "name": "Remove Widgets completely (Win11Debloat already disables them)", "presets": [], "advanced": true, "requires": ["Win11"] },
+    { "id": "WPFTweaksRightClickMenu", "name": "Classic right-click menu", "presets": [], "advanced": true, "requires": ["Win11"] },
+    { "id": "WPFTweaksRemoveHomeAndGallery", "name": "Hide Home and Gallery in File Explorer", "presets": [], "advanced": true, "requires": ["Win11"] },
+    { "id": "WPFTweaksDiskCleanup", "name": "Disk Cleanup + component store cleanup (slow; installed updates can no longer be uninstalled)", "presets": [], "advanced": true },
+    { "id": "WPFTweaksReservedStorage", "name": "Disable Reserved Storage (frees ~7 GB)", "presets": [], "advanced": true, "breaks": "Updates can fail when the disk is nearly full" },
+    { "id": "WPFTweaksRemoveOneDrive", "name": "Remove OneDrive", "presets": [], "advanced": true, "breaks": "OneDrive sync and backup" },
+    { "id": "WPFTweaksRemoveEdge", "name": "Remove Microsoft Edge", "presets": [], "advanced": true, "breaks": "Edge; links in some apps/widgets; Edge WebView2 stays" },
+    { "id": "WPFTweaksWindowsAI", "name": "Remove Windows AI components (Copilot, Recall packages)", "presets": [], "advanced": true }
+  ]
+}

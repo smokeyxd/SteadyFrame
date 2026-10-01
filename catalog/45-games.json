@@ -1,0 +1,30 @@
+{
+  "category": "Games",
+  "order": 55,
+  "tweaks": [
+    {
+      "id": "games.gpu-preference",
+      "name": "Run detected games on the high-performance GPU",
+      "tier": "B",
+      "why": "Sets Windows' per-app graphics preference to 'High performance' for each detected game (Tekken 8, VALORANT, CS2). Matters on PCs that also have integrated graphics enabled (most Ryzen 7000/9000 and Intel CPUs); harmless otherwise. Same switch as Settings > Display > Graphics.",
+      "breaks": "",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "requires": ["GameDetected"],
+      "actions": [
+        { "type": "RegistryToken", "path": "HKCU\\Software\\Microsoft\\DirectX\\UserGpuPreferences", "name": "{GameExePath}", "token": "GpuPreference", "value": "2" }
+      ]
+    },
+    {
+      "id": "games.cs2-autoexec",
+      "name": "CS2: write autoexec.cfg with an fps cap (asks for the value)",
+      "tier": "B",
+      "advanced": true,
+      "why": "Writes a clearly marked block into game\\csgo\\cfg\\autoexec.cfg: fps_max (a capped rate gave much better 1% lows than unlimited in community testing) plus a commented-out frame pacing tweak to test yourself. Anything already in your autoexec is kept; undo removes only this block.",
+      "breaks": "",
+      "source": "https://steamcommunity.com/discussions/forum/11/565912032657889064/",
+      "presets": [],
+      "requires": ["Game:cs2"],
+      "actions": [ { "type": "Cs2Autoexec" } ]
+    }
+  ]
+}

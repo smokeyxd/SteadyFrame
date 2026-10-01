@@ -1,0 +1,85 @@
+{
+  "category": "Leftover fixes",
+  "order": 10,
+  "tweaks": [
+    {
+      "id": "fix.useplatformclock",
+      "name": "Remove forced HPET clock (bcdedit useplatformclock)",
+      "tier": "A",
+      "why": "Forcing HPET as the main clock is an old 'FPS tweak' that adds timer read overhead and can hurt frame pacing. Windows picks the best clock source by default.",
+      "breaks": "",
+      "source": "https://github.com/valleyofdoom/PC-Tuning",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "requires": ["Leftover:UsePlatformClock", "!BitLocker"],
+      "actions": [ { "type": "Bcd", "setting": "useplatformclock", "delete": true } ]
+    },
+    {
+      "id": "fix.pagefile",
+      "name": "Re-enable the page file (system managed)",
+      "tier": "A",
+      "why": "Running with no page file makes games and browsers crash or stutter when memory commit runs out. A system-managed page file is the safe default even with lots of RAM.",
+      "breaks": "",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "requires": ["Leftover:PagefileDisabled"],
+      "actions": [ { "type": "Pagefile", "automatic": true } ]
+    },
+    {
+      "id": "fix.spectre",
+      "name": "Restore CPU security mitigations (Spectre/Meltdown)",
+      "tier": "A",
+      "why": "Something turned off CPU security mitigations. That is a real security hole and some anti-cheats look at it. This removes the override so Windows uses its defaults.",
+      "breaks": "",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "requires": ["Leftover:SpectreMitigationsDisabled"],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management", "name": "FeatureSettingsOverride", "delete": true },
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management", "name": "FeatureSettingsOverrideMask", "delete": true }
+      ]
+    },
+    {
+      "id": "fix.largesystemcache",
+      "name": "Reset LargeSystemCache to the desktop default",
+      "tier": "A",
+      "why": "LargeSystemCache=1 is a server setting that favors file cache over applications. On a gaming PC it can take memory from the game and add stutter.",
+      "breaks": "",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "requires": ["Leftover:LargeSystemCache"],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management", "name": "LargeSystemCache", "kind": "DWord", "value": 0 }
+      ]
+    },
+    {
+      "id": "fix.wuauserv",
+      "name": "Re-enable the Windows Update service",
+      "tier": "A",
+      "why": "Windows Update was disabled (usually by an old debloat tool). Without it you miss security fixes, and anti-cheats like Vanguard and FACEIT can refuse to run on outdated builds.",
+      "breaks": "",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "requires": ["Leftover:WuauservDisabled"],
+      "actions": [ { "type": "Service", "name": "wuauserv", "startType": "Manual" } ]
+    },
+    {
+      "id": "fix.bits",
+      "name": "Re-enable the BITS service",
+      "tier": "A",
+      "why": "Background Intelligent Transfer Service was disabled. Windows Update, the Store and several game launchers need it to download.",
+      "breaks": "",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "requires": ["Leftover:BitsDisabled"],
+      "actions": [ { "type": "Service", "name": "BITS", "startType": "Manual" } ]
+    },
+    {
+      "id": "fix.priority-separation",
+      "name": "Reset Win32PrioritySeparation to the Windows default",
+      "tier": "A",
+      "why": "An unusual value from an old tweak tool was found. The Windows client default (2) already gives the foreground game a boost; odd values can make background work starve or stutter.",
+      "breaks": "",
+      "source": "https://github.com/valleyofdoom/PC-Tuning/blob/main/docs/research.md",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "requires": ["Leftover:PrioritySeparationOdd"],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Control\\PriorityControl", "name": "Win32PrioritySeparation", "kind": "DWord", "value": 2 }
+      ]
+    }
+  ]
+}

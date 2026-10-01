@@ -1,0 +1,67 @@
+{
+  "category": "Power",
+  "order": 20,
+  "tweaks": [
+    {
+      "id": "power.plan-ultimate",
+      "name": "Ultimate Performance power plan (falls back to High Performance)",
+      "tier": "A",
+      "order": 10,
+      "why": "Keeps the CPU out of deep idle states between frames and stops aggressive downclocking, which removes a common source of frame-time spikes. Created as a separate 'SteadyFrame Ultimate Performance' plan so the original plans stay untouched.",
+      "breaks": "A few extra watts at idle. Desktop only.",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "requires": ["Desktop", "!DualCcdX3D"],
+      "actions": [ { "type": "PowerScheme", "scheme": "Ultimate" } ]
+    },
+    {
+      "id": "power.plan-balanced-x3d",
+      "name": "Keep the Balanced plan (dual-CCD Ryzen X3D)",
+      "tier": "A",
+      "order": 10,
+      "why": "On the 7900X3D/7950X3D/9900X3D/9950X3D, AMD's 3D V-Cache driver parks the non-V-Cache cores while a game runs, and it relies on the Balanced plan plus Xbox Game Bar to do it. High/Ultimate Performance breaks that and costs FPS.",
+      "breaks": "",
+      "source": "AMD chipset driver guidance for dual-CCD X3D processors",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "requires": ["DualCcdX3D"],
+      "actions": [ { "type": "PowerScheme", "scheme": "Balanced" } ]
+    },
+    {
+      "id": "power.usb-suspend-off",
+      "name": "Disable USB selective suspend",
+      "tier": "A",
+      "order": 20,
+      "why": "Stops Windows from putting USB ports to sleep to save power, which causes mouse/keyboard/headset hiccups and random disconnects.",
+      "breaks": "",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "requires": ["Desktop"],
+      "actions": [
+        { "type": "PowerSetting", "label": "USB selective suspend", "subgroup": "2a737441-1930-4402-8d77-b2bebba308a3", "setting": "48e6b7a6-50f5-4782-a5d4-53bb8f07e226", "ac": 0, "dc": 0 }
+      ]
+    },
+    {
+      "id": "power.pcie-aspm-off",
+      "name": "Disable PCI Express link power management (ASPM)",
+      "tier": "A",
+      "order": 21,
+      "why": "ASPM lets the GPU/NVMe link drop into low-power states; waking it back up adds latency. Desktops don't need the savings.",
+      "breaks": "",
+      "source": "https://github.com/valleyofdoom/PC-Tuning",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "requires": ["Desktop"],
+      "actions": [
+        { "type": "PowerSetting", "label": "PCI Express link state power management", "subgroup": "501a4d13-42af-4429-9fd1-a8218c268e20", "setting": "ee12f906-d277-404b-b6da-e5fa1a576df5", "ac": 0, "dc": 0 }
+      ]
+    },
+    {
+      "id": "power.hibernate-off",
+      "name": "Disable hibernation and Fast Startup",
+      "tier": "A",
+      "order": 30,
+      "why": "Fast Startup restores a saved kernel/driver state instead of doing a clean boot, a classic cause of 'my PC is weird after shutdown' problems. Also frees a hiberfil.sys about 40% the size of your RAM.",
+      "breaks": "The Hibernate option; cold boots take a few seconds longer.",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "requires": ["Desktop"],
+      "actions": [ { "type": "Hibernate", "enabled": false } ]
+    }
+  ]
+}

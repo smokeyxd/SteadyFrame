@@ -1,0 +1,107 @@
+{
+  "category": "Gaming",
+  "order": 30,
+  "tweaks": [
+    {
+      "id": "gaming.game-mode-on",
+      "name": "Make sure Game Mode is ON",
+      "tier": "A",
+      "why": "Game Mode stops Windows Update from installing drivers or showing restart prompts while you play and gives the game scheduling priority. Old tweak guides turn it off; on current Windows it helps.",
+      "breaks": "",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "actions": [
+        { "type": "Registry", "path": "HKCU\\Software\\Microsoft\\GameBar", "name": "AutoGameModeEnabled", "kind": "DWord", "value": 1 },
+        { "type": "Registry", "path": "HKCU\\Software\\Microsoft\\GameBar", "name": "AllowAutoGameMode", "kind": "DWord", "value": 1 }
+      ]
+    },
+    {
+      "id": "gaming.dvr-off",
+      "name": "Turn off Game DVR background recording",
+      "tier": "A",
+      "why": "Background recording keeps encoding your gameplay to memory the whole time you play. Turning it off removes that overhead. Game Bar itself stays installed (needed by X3D CPUs and controllers).",
+      "breaks": "Win+Alt+R recording and 'Record that' clips. Use NVIDIA/AMD/OBS recording instead.",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "actions": [
+        { "type": "Registry", "path": "HKCU\\System\\GameConfigStore", "name": "GameDVR_Enabled", "kind": "DWord", "value": 0 },
+        { "type": "Registry", "path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\GameDVR", "name": "AppCaptureEnabled", "kind": "DWord", "value": 0 },
+        { "type": "Registry", "path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\GameDVR", "name": "HistoricalCaptureEnabled", "kind": "DWord", "value": 0 }
+      ]
+    },
+    {
+      "id": "gaming.windowed-optimizations",
+      "name": "Optimizations for windowed games (flip model upgrade)",
+      "tier": "A",
+      "why": "Upgrades older DirectX 10/11 games running windowed or borderless to the modern flip presentation model: lower latency, and VRR/Auto HDR work there. Only this one token is changed, your Auto HDR/VRR choices are kept.",
+      "breaks": "",
+      "source": "Microsoft DirectX blog: Optimizations for windowed games (Windows 11)",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "requires": ["Win11"],
+      "actions": [
+        { "type": "RegistryToken", "path": "HKCU\\Software\\Microsoft\\DirectX\\UserGpuPreferences", "name": "DirectXUserGlobalSettings", "token": "SwapEffectUpgradeEnable", "value": "1" }
+      ]
+    },
+    {
+      "id": "gaming.mouse-accel-off",
+      "name": "Disable mouse acceleration ('Enhance pointer precision')",
+      "tier": "A",
+      "why": "With acceleration on, cursor distance depends on how fast you move your hand, so flicks are inconsistent. Raw-input games ignore it, but menus and many games don't. Applies after sign-out.",
+      "breaks": "",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "actions": [
+        { "type": "Registry", "path": "HKCU\\Control Panel\\Mouse", "name": "MouseSpeed", "kind": "String", "value": "0" },
+        { "type": "Registry", "path": "HKCU\\Control Panel\\Mouse", "name": "MouseThreshold1", "kind": "String", "value": "0" },
+        { "type": "Registry", "path": "HKCU\\Control Panel\\Mouse", "name": "MouseThreshold2", "kind": "String", "value": "0" }
+      ]
+    },
+    {
+      "id": "gaming.hags-on",
+      "name": "Hardware-accelerated GPU scheduling: ON",
+      "tier": "B",
+      "group": "hags",
+      "why": "Required for DLSS Frame Generation on RTX 40/50 cards. On older GPUs the effect varies by game, so benchmark before/after. Needs a reboot.",
+      "breaks": "",
+      "presets": [],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers", "name": "HwSchMode", "kind": "DWord", "value": 2 }
+      ]
+    },
+    {
+      "id": "gaming.hags-off",
+      "name": "Hardware-accelerated GPU scheduling: OFF",
+      "tier": "B",
+      "group": "hags",
+      "why": "Some older GPUs/drivers stutter with HAGS on. Turn it off only if benchmarks show better 1% lows without it. Breaks DLSS Frame Generation.",
+      "breaks": "DLSS Frame Generation.",
+      "presets": [],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers", "name": "HwSchMode", "kind": "DWord", "value": 1 }
+      ]
+    },
+    {
+      "id": "gaming.mpo-off",
+      "name": "Disable Multiplane Overlay (MPO)",
+      "tier": "B",
+      "why": "Only for PCs with flicker or stutter in borderless/windowed games or videos on multi-monitor setups (a known NVIDIA issue). Newer Windows builds may ignore this key; check the problem is actually gone.",
+      "breaks": "",
+      "source": "NVIDIA support: MPO flicker/stutter workaround",
+      "presets": [],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Microsoft\\Windows\\Dwm", "name": "OverlayTestMode", "kind": "DWord", "value": 5 }
+      ]
+    },
+    {
+      "id": "gaming.fso-off-global",
+      "name": "Disable fullscreen optimizations globally",
+      "tier": "C",
+      "why": "Forces the old exclusive-fullscreen behavior. On modern Windows, fullscreen optimizations already give flip-model latency; reported gains are anecdotal. Prefer the per-game compatibility checkbox if one game misbehaves.",
+      "breaks": "Alt-tab gets slower in exclusive fullscreen.",
+      "presets": [],
+      "actions": [
+        { "type": "Registry", "path": "HKCU\\System\\GameConfigStore", "name": "GameDVR_FSEBehaviorMode", "kind": "DWord", "value": 2 },
+        { "type": "Registry", "path": "HKCU\\System\\GameConfigStore", "name": "GameDVR_HonorUserFSEBehaviorMode", "kind": "DWord", "value": 1 },
+        { "type": "Registry", "path": "HKCU\\System\\GameConfigStore", "name": "GameDVR_FSEBehavior", "kind": "DWord", "value": 2 },
+        { "type": "Registry", "path": "HKCU\\System\\GameConfigStore", "name": "GameDVR_DXGIHonorFSEWindowsCompatible", "kind": "DWord", "value": 1 }
+      ]
+    }
+  ]
+}

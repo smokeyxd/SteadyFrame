@@ -1,0 +1,111 @@
+{
+  "category": "Scheduling and memory",
+  "order": 60,
+  "tweaks": [
+    {
+      "id": "sched.system-responsiveness",
+      "name": "MMCSS SystemResponsiveness = 10",
+      "tier": "B",
+      "why": "MMCSS reserves 20% of CPU time for low-priority work while multimedia/game threads are active; 10 is the documented minimum. Small effect, low risk.",
+      "breaks": "",
+      "source": "https://learn.microsoft.com/en-us/windows/win32/procthread/multimedia-class-scheduler-service",
+      "presets": ["HighEnd", "MidRange"],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile", "name": "SystemResponsiveness", "kind": "DWord", "value": 10 }
+      ]
+    },
+    {
+      "id": "sched.mmcss-games",
+      "name": "MMCSS 'Games' task: High priority / scheduling category",
+      "tier": "C",
+      "why": "Raises the MMCSS 'Games' task priorities. Only threads that register with MMCSS as 'Games' are affected, and few games do. Evidence of benefit is anecdotal.",
+      "breaks": "",
+      "presets": [],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games", "name": "GPU Priority", "kind": "DWord", "value": 8 },
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games", "name": "Priority", "kind": "DWord", "value": 6 },
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games", "name": "Scheduling Category", "kind": "String", "value": "High" },
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games", "name": "SFIO Priority", "kind": "String", "value": "High" }
+      ]
+    },
+    {
+      "id": "sched.priority-separation",
+      "name": "Win32PrioritySeparation = 0x26 (short, variable, 3x foreground)",
+      "tier": "C",
+      "why": "Popular 'foreground boost' value. The Windows client default (2) already behaves almost the same; included because people ask for it.",
+      "breaks": "",
+      "source": "https://github.com/valleyofdoom/PC-Tuning/blob/main/docs/research.md",
+      "presets": [],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Control\\PriorityControl", "name": "Win32PrioritySeparation", "kind": "DWord", "value": 38 }
+      ]
+    },
+    {
+      "id": "sched.game-priority-high",
+      "name": "Always start chosen games at High CPU priority (IFEO PerfOptions)",
+      "tier": "C",
+      "why": "Windows starts the listed .exe files at High priority. Can starve audio, input and Discord threads (crackles, input lag) and isn't officially sanctioned by anti-cheats (no known bans, your call). Benchmark 1% lows before keeping it. Add games under Advanced > game list.",
+      "breaks": "Possible audio crackle / laggy voice chat while the game runs.",
+      "presets": [],
+      "requires": ["GameExe"],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\{GameExe}\\PerfOptions", "name": "CpuPriorityClass", "kind": "DWord", "value": 3 }
+      ]
+    },
+    {
+      "id": "sched.global-timer-resolution",
+      "name": "Allow global timer resolution requests (Windows 11)",
+      "tier": "C",
+      "why": "Lets one app's high timer-resolution request apply system-wide again. Does nothing by itself; only matters together with a timer-resolution tool. Raises power use.",
+      "breaks": "",
+      "source": "https://github.com/valleyofdoom/PC-Tuning/blob/main/docs/research.md",
+      "presets": [],
+      "requires": ["Win11"],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\kernel", "name": "GlobalTimerResolutionRequests", "kind": "DWord", "value": 1 }
+      ]
+    },
+    {
+      "id": "sched.disable-dynamic-tick",
+      "name": "Disable dynamic tick (bcdedit)",
+      "tier": "C",
+      "why": "Keeps the system timer ticking at a fixed rate instead of skipping ticks when idle. Mixed evidence; raises idle power. Needs BitLocker off/suspended.",
+      "breaks": "Higher idle power.",
+      "presets": [],
+      "requires": ["!BitLocker"],
+      "actions": [ { "type": "Bcd", "setting": "disabledynamictick", "value": "yes" } ]
+    },
+    {
+      "id": "mem.disable-paging-executive",
+      "name": "Keep kernel and drivers in RAM (DisablePagingExecutive)",
+      "tier": "C",
+      "why": "Stops Windows from paging kernel/driver code to disk. With 16 GB+ Windows rarely does that anyway, so the effect is negligible.",
+      "breaks": "",
+      "presets": [],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management", "name": "DisablePagingExecutive", "kind": "DWord", "value": 1 }
+      ]
+    },
+    {
+      "id": "mem.svchost-split",
+      "name": "Group services into fewer svchost processes (SvcHostSplitThresholdInKB = RAM)",
+      "tier": "C",
+      "why": "Mostly cosmetic: fewer svchost.exe entries in Task Manager and a little less RAM. A crash in one service can take its group down. WinUtil's 'Services' tweak already applies this.",
+      "breaks": "",
+      "presets": [],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Control", "name": "SvcHostSplitThresholdInKB", "kind": "DWord", "value": "{RamKB}" }
+      ]
+    },
+    {
+      "id": "mem.compression-off",
+      "name": "Disable memory compression",
+      "tier": "C",
+      "why": "Memory compression trades a little CPU to fit more in RAM. With 32 GB+ it rarely kicks in; with 16 GB turning it off can cause more paging instead. Never use it on 8 GB.",
+      "breaks": "",
+      "presets": [],
+      "requires": ["Ram16Plus"],
+      "actions": [ { "type": "MMAgent", "memoryCompression": false } ]
+    }
+  ]
+}

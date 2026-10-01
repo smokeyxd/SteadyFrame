@@ -1,0 +1,222 @@
+# SteadyFrame
+
+SteadyFrame is a Windows 10/11 tune-up script for gaming PCs. It checks your PC for common problems,
+removes some background clutter, and applies a set of settings aimed at smoother, more consistent
+frame times.
+
+It won't turn a slow PC into a fast one. What it can do is fix setup mistakes (RAM running at stock
+speed, a monitor stuck at 60 Hz, leftovers from old "FPS booster" tools) and cut down on background
+stuff that causes random stutters. How much you notice depends on your PC, so the README explains how
+to measure it yourself.
+
+Everything it changes is shown to you first, and the changes can be undone.
+
+## How to use it
+
+1. Download or copy the whole `SteadyFrame` folder. Keep the files together.
+2. Double-click **`HealthCheck.bat`**. This only looks, it changes nothing. At the end it lists
+   things to fix outside Windows, for example turning on XMP/EXPO in the BIOS.
+3. (Optional) Record a benchmark in your main game first. See [Checking the results](#checking-the-results).
+4. Double-click **`Run.bat`** and pick the option marked *recommended for this PC*.
+5. Go through the lists. Everything that will change is ticked; type a number to untick it,
+   press Enter to continue. Nothing happens until you type `YES` on the summary screen.
+6. Restart the PC when it's done.
+
+To undo, double-click **`Revert.bat`** and pick the run you want to undo. SteadyFrame also creates a
+Windows restore point before changing anything, which undoes everything at once
+(press Win+R, type `rstrui`, press Enter).
+
+### Warnings you might see
+
+"Windows protected your PC" is SmartScreen. Windows shows it for any script downloaded from the
+internet that isn't signed by a company. Click *More info* and then *Run anyway*, or read the files
+first, they're plain text.
+
+"Do you want to allow this app to make changes" is the admin prompt. It's needed to change system
+settings. `HealthCheck.bat` asks too, so it can read things like TPM and BitLocker status.
+
+## What it does
+
+The health check only reads. It looks for:
+
+- RAM running at default speed (XMP/EXPO off), a single RAM stick (single channel), less than 16 GB
+- Windows installed on a hard drive, a nearly full system drive
+- an old graphics driver, Resizable BAR off (NVIDIA), a monitor running below its max refresh rate
+- background apps known to cause stutter (Armoury Crate, iCUE, Nahimic, Wallpaper Engine and others)
+- leftovers from old tweak tools: page file disabled, forced HPET, CPU security fixes turned off,
+  Windows Update disabled
+- Intel 13th/14th gen CPUs: whether the BIOS has Intel's fix for the voltage problem (microcode 0x12F or newer)
+
+The changes, grouped the same way as in the menu:
+
+- Power: a performance power plan, USB and PCIe power saving off, Fast Startup off (desktops only)
+- Gaming: Game Mode on, background game recording off, mouse acceleration off, the Windows 11 setting
+  for windowed games
+- Background: you pick which startup apps to disable, Store apps stop running in the background,
+  telemetry services and tasks off, Windows Update stops uploading to other PCs
+- Network: power saving on the network adapter off
+- Windows Update: big yearly updates are postponed, security updates keep installing, and no
+  automatic restarts while you're signed in
+- Debloat and privacy: runs [WinUtil](https://github.com/ChrisTitusTech/winutil) by Chris Titus Tech
+  and [Win11Debloat](https://github.com/Raphire/Win11Debloat) by Raphire with a fixed list of options
+  (removes preinstalled apps like Candy Crush and Clipchamp, turns off ads, tips, Copilot and telemetry)
+
+Each item in the menu shows why it's there and what it may stop working. Type `i` and the number to
+see it. The summary screen lists everything that could stop working before you confirm.
+
+### Evidence tiers
+
+Every SteadyFrame setting has a letter next to it in the menu. A means it's backed by testing or
+documented by Microsoft, AMD, Intel or NVIDIA, and it's on by default. B means it helps on some PCs,
+so it's only turned on when it applies to yours. C means it's popular online but the evidence is weak
+or it's placebo. C settings are hidden unless you open Advanced, are never on by default, and their
+description says so.
+
+Some popular tweaks are left out on purpose because they make things worse: turning off TCP
+auto-tuning (slower downloads), disabling IPv6 or Teredo (breaks Xbox networking), forcing HPET,
+disabling the page file.
+
+### What it never touches
+
+These are blocked in the code, not just left unticked, so games with anti-cheat (Valorant, FACEIT,
+and others) keep working and the PC stays protected:
+
+- Windows Defender protection (real-time, tamper protection, cloud protection)
+- Memory integrity / VBS, Secure Boot, TPM, anti-cheat services
+- UAC, SmartScreen, the firewall, CPU security fixes (Spectre/Meltdown)
+- Windows Update can be postponed, but never turned off
+
+After every run it checks these again and warns you if anything changed.
+
+### What it downloads
+
+Only WinUtil and Win11Debloat, from their official GitHub releases. By default it uses specific
+versions that were read through before being added, and checks each download's SHA256 fingerprint
+before running it. If the fingerprint doesn't match, the file is deleted and not run.
+
+SteadyFrame itself doesn't send any data anywhere; the only thing it connects to is GitHub, to download
+those two tools. If you don't want them at all, open Advanced (type `adv` in the main menu) and set the
+source to *None*. With `-Prefetch` you can download them once and then use the folder on PCs without
+internet.
+
+## Games
+
+If TEKKEN 8, VALORANT or Counter-Strike 2 is installed, SteadyFrame:
+
+- sets Windows to run the game on the main graphics card (matters on PCs that also have integrated
+  graphics enabled)
+- shows a settings card for each game (main menu option 7): the in-game and driver settings that
+  help frame pacing, each with the reason, plus popular tweaks that don't help. The card is also
+  saved as `game-settings.txt` in the run folder, easy to send to a friend.
+- CS2 only, in Advanced: it can add an fps cap to your `autoexec.cfg`. It asks for the number first,
+  keeps your own lines, and undo removes only what it added.
+
+It doesn't edit TEKKEN 8 or VALORANT files. VALORANT syncs settings from Riot's servers and would
+overwrite them, and Bandai Namco bans TEKKEN 8 accounts for modified game files.
+
+## Checking the results
+
+Average FPS doesn't tell you much about stutter. The useful numbers are the 1% low and the 0.1% low,
+which show the frame rate during the worst moments.
+
+1. Install [CapFrameX](https://www.capframex.com/) (free, open source) or Intel PresentMon.
+2. Pick a repeatable test: a replay, a benchmark mode, or the same route in the same map.
+3. Record 3 runs of 60 to 90 seconds before running SteadyFrame.
+4. Run SteadyFrame, restart, then record 3 runs again.
+5. Compare the 1% and 0.1% lows.
+
+If a specific setting makes things worse on your PC, undo just that one with `Revert.bat`.
+
+## Options
+
+Type `adv` in the main menu for:
+
+- where the debloat tools come from: the checked versions (default), the latest versions (not
+  checked), or none
+- Windows Update: postpone big updates (default), security-focused, or leave it alone
+- show tier C settings
+- games to always start at High priority (tier C, see its warning)
+- whether the PC uses Game Pass / the Xbox app
+- dry run: shows exactly what would change without changing anything
+
+There are three presets. HighEnd is everything above and keeps the normal Windows look. MidRange also
+uses lighter visual effects and turns off Windows Search indexing; it's suggested when the PC has less
+than 16 GB of RAM, 8 or fewer CPU threads, or Windows on a hard drive. Minimal only makes the safest
+changes and skips the debloat tools.
+
+## Where things are saved
+
+Each run gets a folder in `runs\` with the list of changes (used by `Revert.bat`), a log, the health
+check report and the game settings cards. Downloaded copies of WinUtil and Win11Debloat go in
+`tools\cache\`. SteadyFrame keeps its files inside its own folder; WinUtil and Win11Debloat may keep
+their own logs as well.
+
+## Command line
+
+For people who prefer it, or for scripting:
+
+```powershell
+.\SteadyFrame.ps1                                    # the menu
+.\SteadyFrame.ps1 -DiagnoseOnly                      # health check only
+.\SteadyFrame.ps1 -Preset HighEnd -DryRun            # show what would change
+.\SteadyFrame.ps1 -Preset MidRange -Unattended -UpdatePolicy SecurityOnly
+.\SteadyFrame.ps1 -Exclude bg.print-spooler-off,WPFTweaksLocation
+.\SteadyFrame.ps1 -GameCards                         # game settings cards
+.\SteadyFrame.ps1 -Revert                            # undo menu
+.\SteadyFrame.ps1 -Prefetch                          # download the two tools now, for offline use later
+.\SteadyFrame.ps1 -ListTweaks -Json                  # every setting and whether it applies, as JSON
+```
+
+## For contributors
+
+```
+Run.bat, HealthCheck.bat, Revert.bat   launchers
+SteadyFrame.ps1                        menu and command line
+lib\                                   the engine (Guard.ps1 holds the never-touch rules)
+catalog\*.json                         SteadyFrame's settings: tier, reason, what it may break, source
+games\games.json                       supported games and their settings cards
+external\                              options passed to WinUtil / Win11Debloat, pinned versions and hashes
+tools\Update-Pin.ps1                   move a pinned tool to a newer version
+tests\Run-Tests.ps1                    tests (no admin needed, only touch a test registry key and %TEMP%)
+```
+
+Run the tests with:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tests\Run-Tests.ps1
+```
+
+To add a setting, add an entry to the right file in `catalog\` with an `id`, `name`, `tier`, `why`,
+`breaks`, `source`, `presets`, optional `requires` (for example `Desktop`, `Win11`, `!Printer`) and
+`actions`. The tests reject anything the never-touch rules block, and any tier C setting placed in a
+preset.
+
+To update WinUtil or Win11Debloat, read what changed in the new release, run
+`.\tools\Update-Pin.ps1 -Tool winutil -Tag <version> -Write`, check that the option names in
+`external\` still exist, and run the tests.
+
+To add a game, add it to `games\games.json`. Only put settings on its card that have testing or the
+developer behind them, with a source.
+
+## Known limits
+
+- Changes made by WinUtil and Win11Debloat, and removed apps, aren't in SteadyFrame's undo list. The
+  restore point covers them, and removed apps can be reinstalled from the Microsoft Store.
+- Run it from the account you game on. Settings like mouse acceleration apply to the account that runs it.
+- Boot settings are skipped while BitLocker is on, since changing them can trigger the BitLocker recovery screen.
+- The menus are in English.
+
+## Credits
+
+- [WinUtil](https://github.com/ChrisTitusTech/winutil) by Chris Titus Tech
+- [Win11Debloat](https://github.com/Raphire/Win11Debloat) by Raphire
+- Testing and research by [djdallmann](https://github.com/djdallmann/GamingPCSetup) and
+  [valleyofdoom](https://github.com/valleyofdoom/PC-Tuning)
+- Inspired by [Talon](https://github.com/ravendevteam/talon) by Raven
+
+Use it at your own risk. It changes system settings; that's why it shows everything first, makes a
+restore point, and keeps an undo list.
+
+## License
+
+MIT, see [LICENSE](LICENSE). WinUtil and Win11Debloat are separate projects with their own licenses; SteadyFrame downloads them, it does not include them.

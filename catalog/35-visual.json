@@ -1,0 +1,34 @@
+{
+  "category": "Visual effects",
+  "order": 45,
+  "tweaks": [
+    {
+      "id": "ui.visual-effects-performance",
+      "name": "Visual effects: best performance (keeps smooth fonts and thumbnails)",
+      "tier": "B",
+      "why": "Turns off window animations, shadows and Peek. Frees a little CPU/GPU on older PCs; no in-game effect on high-end PCs. Applies after sign-out.",
+      "breaks": "Windows looks plainer.",
+      "presets": ["MidRange"],
+      "actions": [
+        { "type": "Registry", "path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VisualEffects", "name": "VisualFXSetting", "kind": "DWord", "value": 3 },
+        { "type": "Registry", "path": "HKCU\\Control Panel\\Desktop", "name": "UserPreferencesMask", "kind": "Binary", "value": "9012038010000000" },
+        { "type": "Registry", "path": "HKCU\\Control Panel\\Desktop\\WindowMetrics", "name": "MinAnimate", "kind": "String", "value": "0" },
+        { "type": "Registry", "path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "TaskbarAnimations", "kind": "DWord", "value": 0 },
+        { "type": "Registry", "path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "ListviewAlphaSelect", "kind": "DWord", "value": 0 },
+        { "type": "Registry", "path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "ListviewShadow", "kind": "DWord", "value": 0 },
+        { "type": "Registry", "path": "HKCU\\Software\\Microsoft\\Windows\\DWM", "name": "EnableAeroPeek", "kind": "DWord", "value": 0 }
+      ]
+    },
+    {
+      "id": "ui.transparency-off",
+      "name": "Turn off transparency effects",
+      "tier": "B",
+      "why": "Acrylic/blur effects in Start, taskbar and Settings cost a little GPU. Worth it on weaker GPUs.",
+      "breaks": "Start and taskbar become solid.",
+      "presets": ["MidRange"],
+      "actions": [
+        { "type": "Registry", "path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize", "name": "EnableTransparency", "kind": "DWord", "value": 0 }
+      ]
+    }
+  ]
+}

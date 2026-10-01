@@ -1,0 +1,52 @@
+{
+  "category": "Network",
+  "order": 50,
+  "tweaks": [
+    {
+      "id": "net.nic-power-saving-off",
+      "name": "Disable network adapter power saving (EEE / Green Ethernet / NIC sleep)",
+      "tier": "A",
+      "why": "Energy-Efficient Ethernet, Green Ethernet and NIC power-down features can add latency spikes or brief link drops. Desktops don't need them. Uses standard driver keywords, so it works on any Windows language; settings an adapter doesn't have are skipped.",
+      "breaks": "Slightly higher idle power; Wake-on-LAN may stop working.",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "requires": ["Desktop"],
+      "actions": [
+        { "type": "NetAdapterProperty", "keyword": "*EEE", "value": "0" },
+        { "type": "NetAdapterProperty", "keyword": "EEELinkAdvertisement", "value": "0" },
+        { "type": "NetAdapterProperty", "keyword": "EnableGreenEthernet", "value": "0" },
+        { "type": "NetAdapterProperty", "keyword": "AdvancedEEE", "value": "0" },
+        { "type": "NetAdapterProperty", "keyword": "PowerSavingMode", "value": "0" },
+        { "type": "NetAdapterProperty", "keyword": "GigaLite", "value": "0" },
+        { "type": "NetAdapterProperty", "keyword": "ULPMode", "value": "0" },
+        { "type": "NetAdapterProperty", "keyword": "SipsEnabled", "value": "0" },
+        { "type": "NetAdapterProperty", "keyword": "ReduceSpeedOnPowerDown", "value": "0" },
+        { "type": "NetAdapterProperty", "keyword": "*SelectiveSuspend", "value": "0" },
+        { "type": "Registry", "path": "{NicClassKeys}", "name": "PnPCapabilities", "kind": "DWord", "value": 24 }
+      ]
+    },
+    {
+      "id": "net.nagle-off",
+      "name": "Disable Nagle / delayed ACK (TcpAckFrequency, TCPNoDelay)",
+      "tier": "C",
+      "why": "Only affects games that use TCP (some MMOs and older titles). CS2, Valorant, Fortnite, Apex and most shooters use UDP, so this does nothing for them.",
+      "breaks": "",
+      "presets": [],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters\\Interfaces\\{ActiveInterfaces}", "name": "TcpAckFrequency", "kind": "DWord", "value": 1 },
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters\\Interfaces\\{ActiveInterfaces}", "name": "TCPNoDelay", "kind": "DWord", "value": 1 }
+      ]
+    },
+    {
+      "id": "net.network-throttling-off",
+      "name": "Disable network throttling (NetworkThrottlingIndex)",
+      "tier": "C",
+      "why": "Removes the packet-processing limit MMCSS applies while media plays. Testing (djdallmann) found it can INCREASE network DPC latency, so it is not recommended for games; listed because many guides include it.",
+      "breaks": "",
+      "source": "https://github.com/djdallmann/GamingPCSetup/blob/master/CONTENT/RESEARCH/NETWORK/README.md",
+      "presets": [],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile", "name": "NetworkThrottlingIndex", "kind": "DWord", "value": 4294967295 }
+      ]
+    }
+  ]
+}

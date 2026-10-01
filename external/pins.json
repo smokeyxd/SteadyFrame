@@ -1,0 +1,19 @@
+{
+  "_readme": "Pinned, reviewed releases. To update: pick a new release, read what changed, run tools\\Update-Pin.ps1 -Tool <name> -Tag <tag> (prints the new hash), and commit the change.",
+  "winutil": {
+    "tag": "26.08.19",
+    "url": "https://github.com/ChrisTitusTech/winutil/releases/download/26.08.19/winutil.ps1",
+    "sha256": "5dd76f9f26c78afee628b8d4c75c43a9de7b5867d83be80deea35aabad0cda8a",
+    "file": "winutil-26.08.19.ps1",
+    "latestUrl": "https://github.com/ChrisTitusTech/winutil/releases/latest/download/winutil.ps1",
+    "reviewed": "2026-10-01"
+  },
+  "win11debloat": {
+    "tag": "2026.08.24",
+    "url": "https://github.com/Raphire/Win11Debloat/archive/refs/tags/2026.08.24.zip",
+    "sha256": "00d1487b2e9b9691653774cc781ed3844e4b2fd5b0d91c32f6f78aa8c7892bd4",
+    "file": "win11debloat-2026.08.24.zip",
+    "latestApi": "https://api.github.com/repos/Raphire/Win11Debloat/releases/latest",
+    "reviewed": "2026-10-01"
+  }
+}

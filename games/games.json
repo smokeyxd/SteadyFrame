@@ -1,0 +1,148 @@
+{
+  "_readme": "Supported games: how to find them and the settings card shown for each. Card items: 'do' = the setting, 'why' = the reason, optional 'only' = nvidia | amd. Keep every line backed by testing or the developer; put unproven ideas under 'Try and measure'.",
+  "games": [
+    {
+      "id": "tekken8",
+      "name": "TEKKEN 8",
+      "steamAppId": 1778820,
+      "exe": "Polaris\\Binaries\\Win64\\Polaris-Win64-Shipping.exe",
+      "card": [
+        {
+          "section": "In game: Settings > Graphics",
+          "items": [
+            { "do": "Display mode: Fullscreen, native resolution", "why": "Most consistent frame pacing and the lowest input delay." },
+            { "do": "Frame rate limit: 60", "why": "Gameplay runs at 60. Going higher changes nothing in the fight and only adds load spikes." },
+            { "do": "VSync: Off", "why": "VSync adds input delay. Cap with the in-game limit (or RTSS) instead." },
+            { "do": "Upscaling: native, DLSS or NIS. Avoid FSR 2", "why": "FSR 2 adds noticeable input lag in this game." },
+            { "do": "Shadows and post-processing Low, motion blur and film grain Off", "why": "Headroom is what keeps 60 locked during supers and stage transitions." }
+          ]
+        },
+        {
+          "section": "NVIDIA Control Panel > Manage 3D settings > Program settings > TEKKEN 8",
+          "items": [
+            { "do": "Low Latency Mode: Ultra", "why": "Keeps the GPU render queue short, which matters most when the GPU is the bottleneck.", "only": "nvidia" },
+            { "do": "Power management mode: Prefer maximum performance", "why": "Stops the GPU from downclocking between frames at a light 60 FPS load.", "only": "nvidia" }
+          ]
+        },
+        {
+          "section": "Controllers",
+          "items": [
+            { "do": "Leverless / arcade stick: plug it into a rear motherboard USB port, not a hub or the front panel", "why": "Direct ports avoid shared-hub polling hiccups. SteadyFrame already disables USB selective suspend so the port never sleeps." },
+            { "do": "Keyboard players: check the Steam overlay frame-time graph while walking", "why": "The built-in keyboard support causes frame-time spikes on movement inputs. The fix is making it show up as a controller (a leverless or HID-Remapper)." }
+          ]
+        },
+        {
+          "section": "After installing or updating",
+          "items": [
+            { "do": "Play 2-3 matches before judging performance", "why": "Shaders compile during the first matches; early stutter after an update is expected." },
+            { "do": "Optional: RTSS frame limit 60 instead of the in-game limit", "why": "RivaTuner's limiter gives the most even frame pacing. Use one limiter, not both." }
+          ]
+        },
+        {
+          "section": "Left out on purpose",
+          "items": [
+            { "do": "Engine.ini edits", "why": "No measured gain, the game can overwrite them, and Bandai Namco does ban accounts for modified clients." }
+          ]
+        }
+      ],
+      "sources": [
+        "https://evezone.evetech.co.za/game-desk/best-tekken-8-pc-settings-for-maximum-fps-in-2026",
+        "https://steamcommunity.com/sharedfiles/filedetails/?id=3679670524",
+        "https://www.eventhubs.com/news/2024/mar/28/bandai-namco-tekken-bans-cheating/"
+      ]
+    },
+    {
+      "id": "valorant",
+      "name": "VALORANT",
+      "riotProduct": "valorant.live",
+      "defaultPath": "C:\\Riot Games\\VALORANT\\live",
+      "exe": "ShooterGame\\Binaries\\Win64\\VALORANT-Win64-Shipping.exe",
+      "card": [
+        {
+          "section": "In game: Settings > Video > General",
+          "items": [
+            { "do": "Display mode: Fullscreen", "why": "Most consistent frame pacing and latency." },
+            { "do": "Limit FPS Always: On, a bit above your refresh rate or at a level your PC holds steadily", "why": "A rate the PC can always hit gives steadier frame times than an uncapped number that bounces around." },
+            { "do": "NVIDIA Reflex Low Latency: On + Boost", "why": "Syncs CPU and GPU so frames don't queue up; lowers system latency.", "only": "nvidia" }
+          ]
+        },
+        {
+          "section": "In game: Settings > Video > Graphics Quality",
+          "items": [
+            { "do": "Multithreaded Rendering: On", "why": "Spreads render work across cores; better lows on modern CPUs." },
+            { "do": "Material, Texture, Detail: Low or Medium. VSync Off. Vignette, Bloom, Distortion, Cast Shadows Off", "why": "Less GPU load spikes in fights, cleaner image for spotting." }
+          ]
+        },
+        {
+          "section": "Good to know",
+          "items": [
+            { "do": "Raw Input Buffer: nothing to do", "why": "Riot made it permanent in patch 11.06; the toggle is gone." },
+            { "do": "Keep TPM 2.0 and Secure Boot on", "why": "Vanguard needs them on Windows 11. SteadyFrame never touches VBS/HVCI either." },
+            { "do": "Don't edit GameUserSettings.ini", "why": "Riot syncs settings from the cloud and overwrites the file." }
+          ]
+        }
+      ],
+      "sources": [
+        "https://valohub.co/guides/best-valorant-settings-fps",
+        "https://www.heyuguys.com/valorant-settings-guide-best-setup-for-competitive-play-in-2026/"
+      ]
+    },
+    {
+      "id": "cs2",
+      "name": "Counter-Strike 2",
+      "steamAppId": 730,
+      "exe": "game\\bin\\win64\\cs2.exe",
+      "cfgDir": "game\\csgo\\cfg",
+      "card": [
+        {
+          "section": "In game: Settings > Video",
+          "items": [
+            { "do": "Display mode: Fullscreen", "why": "Most consistent frame pacing and latency." },
+            { "do": "NVIDIA Reflex Low Latency: Enabled + Boost", "why": "Cuts the render queue; lower latency without costing FPS.", "only": "nvidia" },
+            { "do": "Cap fps_max instead of running unlimited (around what your PC holds in a busy deathmatch; 400 is a common tested value)", "why": "In community testing a 400 cap gave far better 1% lows than unlimited, at a slightly lower average." },
+            { "do": "VSync: Off", "why": "Adds input delay. Use the fps cap (and G-Sync/FreeSync if you have it)." },
+            { "do": "Boost Player Contrast: Enabled", "why": "Visibility; the cost is small." }
+          ]
+        },
+        {
+          "section": "Launch options",
+          "items": [
+            { "do": "+exec autoexec (only if you use an autoexec)", "why": "Makes sure the autoexec loads; guides disagree on whether CS2 always runs it by itself." },
+            { "do": "-allow_third_party_software only if you need OBS game capture", "why": "It may affect Trust Factor." }
+          ]
+        },
+        {
+          "section": "Placebo or worse (skip these)",
+          "items": [
+            { "do": "-high", "why": "Windows already favors the foreground game; forcing High can add input lag." },
+            { "do": "-threads N", "why": "The engine detects cores itself; forcing it can cause stutter." },
+            { "do": "-freq / -refresh, +fps_max 0, -novid", "why": "Refresh is auto-detected, 0 is already the default, -novid only skips the intro." },
+            { "do": "-vulkan", "why": "Tested: +8% average FPS but 15% worse 1% lows. Only keep it if your own benchmark says so." }
+          ]
+        },
+        {
+          "section": "Try and measure",
+          "items": [
+            { "do": "engine_low_latency_sleep_after_client_tick true (with a fixed fps_max)", "why": "Community-reported frame pacing / latency improvement, not documented by Valve. Compare 1% lows with and without." }
+          ]
+        }
+      ],
+      "autoexec": {
+        "fpsMaxDefault": 400,
+        "lines": [
+          "// Capped fps gives steadier 1% lows than unlimited in community testing.",
+          "// Set it a bit below what your PC holds in a busy deathmatch.",
+          "fps_max {FpsMax}",
+          "// Community-reported frame pacing tweak (not documented by Valve). Only with a fixed fps_max.",
+          "// Remove the // below, then compare 1% lows with and without it:",
+          "// engine_low_latency_sleep_after_client_tick true",
+          "echo \"SteadyFrame autoexec loaded\""
+        ]
+      },
+      "sources": [
+        "https://steamcommunity.com/discussions/forum/11/565912032657889064/",
+        "https://totalcsgo.com/launch-options"
+      ]
+    }
+  ]
+}

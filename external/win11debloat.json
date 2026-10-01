@@ -1,0 +1,33 @@
+{
+  "_readme": "Win11Debloat switches (run with -Silent). 'presets' = which presets pick it by default. 'advanced' items are hidden unless you open Advanced. Flags blocked by lib/Guard.ps1 are refused. Reviewed against Win11Debloat 2026.08.24. Its default app list keeps Xbox Game Bar and the Xbox app (Game Pass).",
+  "items": [
+    { "id": "RemoveApps", "name": "Remove preinstalled bloat apps (Bing apps, Clipchamp, Solitaire, consumer Teams, Candy Crush, TikTok...)", "presets": ["HighEnd", "MidRange"], "breaks": "Those apps (reinstall from the Store if you want one back)" },
+    { "id": "DisableTelemetry", "name": "Telemetry, tailored experiences, advertising ID off", "presets": ["HighEnd", "MidRange"] },
+    { "id": "DisableBing", "name": "No Bing web results in Start search", "presets": ["HighEnd", "MidRange"] },
+    { "id": "DisableSuggestions", "name": "No tips, suggestions and ads in Start/Settings/Explorer", "presets": ["HighEnd", "MidRange"] },
+    { "id": "DisableLockscreenTips", "name": "No tips/ads on the lock screen", "presets": ["HighEnd", "MidRange"] },
+    { "id": "DisableSettings365Ads", "name": "No Microsoft 365 ads in Settings", "presets": ["HighEnd", "MidRange"] },
+    { "id": "DisableEdgeAds", "name": "No Edge ads and suggestions", "presets": ["HighEnd", "MidRange"] },
+    { "id": "DisableSearchHighlights", "name": "No 'search highlights' in the search box", "presets": ["HighEnd", "MidRange"] },
+    { "id": "DisableDeviceAutoAppDownload", "name": "No automatic device app downloads", "presets": ["HighEnd", "MidRange"] },
+    { "id": "DisableCopilot", "name": "Copilot off", "presets": ["HighEnd", "MidRange"] },
+    { "id": "DisableRecall", "name": "Recall snapshots off", "presets": ["HighEnd", "MidRange"], "requires": ["Win11"] },
+    { "id": "DisableClickToDo", "name": "Click to Do off", "presets": ["HighEnd", "MidRange"], "requires": ["Win11"] },
+    { "id": "DisableAISvcAutoStart", "name": "Windows AI service doesn't auto-start", "presets": ["HighEnd", "MidRange"], "requires": ["Win11"] },
+    { "id": "DisablePaintAI", "name": "Paint AI features off", "presets": ["HighEnd", "MidRange"], "requires": ["Win11"] },
+    { "id": "DisableNotepadAI", "name": "Notepad AI features off", "presets": ["HighEnd", "MidRange"], "requires": ["Win11"] },
+    { "id": "DisableWidgets", "name": "Widgets off", "presets": ["HighEnd", "MidRange"], "requires": ["Win11"] },
+    { "id": "DisableStartRecommended", "name": "No 'Recommended' section in Start", "presets": ["HighEnd", "MidRange"], "requires": ["Win11"] },
+    { "id": "DisableStickyKeys", "name": "No Sticky Keys popup when you spam Shift", "presets": ["HighEnd", "MidRange"] },
+    { "id": "RemoveGamingApps", "name": "Remove Xbox app and Xbox Game Bar", "presets": [], "advanced": true, "requires": ["!DualCcdX3D", "!GamePass"], "breaks": "Game Pass, Xbox app, Game Bar overlay, controller Guide button overlay" },
+    { "id": "DisableGameBarIntegration", "name": "Disable Game Bar popups/controller integration", "presets": [], "advanced": true, "requires": ["!DualCcdX3D"] },
+    { "id": "ForceRemoveEdge", "name": "Force-remove Microsoft Edge (not recommended by its author)", "presets": [], "advanced": true, "breaks": "Edge; apps that expect it" },
+    { "id": "ExplorerToThisPC", "name": "File Explorer opens to 'This PC'", "presets": [], "advanced": true },
+    { "id": "RevertContextMenu", "name": "Classic right-click menu", "presets": [], "advanced": true, "requires": ["Win11"] },
+    { "id": "TaskbarAlignLeft", "name": "Taskbar icons on the left", "presets": [], "advanced": true, "requires": ["Win11"] },
+    { "id": "EnableDarkMode", "name": "Dark mode", "presets": [], "advanced": true },
+    { "id": "ShowKnownFileExt", "name": "Show file extensions", "presets": [], "advanced": true },
+    { "id": "DisableNotifications", "name": "Turn off all notifications", "presets": [], "advanced": true, "breaks": "Every toast notification (Discord, Steam, Windows)" },
+    { "id": "DisableFindMyDevice", "name": "Find My Device off", "presets": [], "advanced": true }
+  ]
+}

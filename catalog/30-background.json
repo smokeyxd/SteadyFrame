@@ -1,0 +1,95 @@
+{
+  "category": "Background load",
+  "order": 40,
+  "tweaks": [
+    {
+      "id": "bg.startup-review",
+      "name": "Review startup apps (you pick what to disable)",
+      "tier": "A",
+      "why": "Every tray app (launchers, chat, updaters, RGB suites) costs CPU and RAM and can wake up mid-match. Same switch as Task Manager > Startup apps, so anything can be re-enabled there.",
+      "breaks": "Apps you disable no longer start at login (open them manually).",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "actions": [ { "type": "StartupReview" } ]
+    },
+    {
+      "id": "bg.background-apps-off",
+      "name": "Stop Store apps from running in the background",
+      "tier": "A",
+      "why": "Store apps (Weather, News, Mail, Phone Link...) keep background tasks alive even when closed.",
+      "breaks": "Store apps won't refresh or notify while closed.",
+      "presets": ["HighEnd", "MidRange"],
+      "requires": ["!DualCcdX3D"],
+      "actions": [
+        { "type": "Registry", "path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\BackgroundAccessApplications", "name": "GlobalUserDisabled", "kind": "DWord", "value": 1 }
+      ]
+    },
+    {
+      "id": "bg.delivery-optimization",
+      "name": "Stop uploading Windows updates to other PCs (Delivery Optimization P2P)",
+      "tier": "A",
+      "why": "By default Windows can seed update files to other PCs, using your upload bandwidth and raising ping. Downloads from Microsoft keep working.",
+      "breaks": "",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\DeliveryOptimization", "name": "DODownloadMode", "kind": "DWord", "value": 0 }
+      ]
+    },
+    {
+      "id": "bg.telemetry-services",
+      "name": "Disable telemetry services (DiagTrack, WAP push)",
+      "tier": "A",
+      "why": "Connected User Experiences and Telemetry collects and uploads usage data on a schedule. Safe to turn off; Windows Update and the Store keep working.",
+      "breaks": "",
+      "presets": ["HighEnd", "MidRange"],
+      "actions": [
+        { "type": "Service", "name": "DiagTrack", "startType": "Disabled" },
+        { "type": "Service", "name": "dmwappushservice", "startType": "Disabled" }
+      ]
+    },
+    {
+      "id": "bg.telemetry-tasks",
+      "name": "Disable telemetry scheduled tasks (Compatibility Appraiser, CEIP)",
+      "tier": "A",
+      "why": "Compatibility Appraiser (CompatTelRunner.exe) is known for random CPU and disk spikes. These tasks only collect telemetry.",
+      "breaks": "",
+      "presets": ["HighEnd", "MidRange"],
+      "actions": [
+        { "type": "ScheduledTask", "path": "\\Microsoft\\Windows\\Application Experience\\", "name": "Microsoft Compatibility Appraiser", "enabled": false },
+        { "type": "ScheduledTask", "path": "\\Microsoft\\Windows\\Application Experience\\", "name": "Microsoft Compatibility Appraiser Exp", "enabled": false },
+        { "type": "ScheduledTask", "path": "\\Microsoft\\Windows\\Application Experience\\", "name": "ProgramDataUpdater", "enabled": false },
+        { "type": "ScheduledTask", "path": "\\Microsoft\\Windows\\Customer Experience Improvement Program\\", "name": "Consolidator", "enabled": false },
+        { "type": "ScheduledTask", "path": "\\Microsoft\\Windows\\Customer Experience Improvement Program\\", "name": "UsbCeip", "enabled": false },
+        { "type": "ScheduledTask", "path": "\\Microsoft\\Windows\\DiskDiagnostic\\", "name": "Microsoft-Windows-DiskDiagnosticDataCollector", "enabled": false }
+      ]
+    },
+    {
+      "id": "bg.print-spooler-off",
+      "name": "Disable Print Spooler (no printer found)",
+      "tier": "B",
+      "why": "No physical printer was detected. The spooler is an always-on service and a well-known attack surface (PrintNightmare).",
+      "breaks": "Printing and 'Microsoft Print to PDF'. Revert this if you get a printer.",
+      "presets": ["HighEnd", "MidRange"],
+      "requires": ["!Printer"],
+      "actions": [ { "type": "Service", "name": "Spooler", "startType": "Disabled" } ]
+    },
+    {
+      "id": "bg.search-indexing-off",
+      "name": "Disable Windows Search indexing",
+      "tier": "B",
+      "why": "The indexer scans and re-scans files in the background, heavy on hard drives and weaker CPUs.",
+      "breaks": "Instant file search in Explorer/Start and Outlook search. Apps are still found from Start.",
+      "presets": ["MidRange"],
+      "actions": [ { "type": "Service", "name": "WSearch", "startType": "Disabled" } ]
+    },
+    {
+      "id": "bg.sysmain-off",
+      "name": "Disable SysMain (Superfetch) on SSD-only PCs",
+      "tier": "B",
+      "why": "SysMain preloads apps into RAM. On SSD-only PCs the benefit is small and it can cause disk activity spikes. Keep it on PCs with a hard drive.",
+      "breaks": "Apps may open slightly slower the first time.",
+      "presets": [],
+      "requires": ["SsdOnly"],
+      "actions": [ { "type": "Service", "name": "SysMain", "startType": "Disabled" } ]
+    }
+  ]
+}
