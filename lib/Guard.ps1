@@ -1,8 +1,6 @@
-# Hard safety rails. Every write the engine makes is checked here first, and a
-# blocked write is refused even if someone adds it to the catalog by mistake.
-# Goal: anti-cheat (Vanguard, FACEIT, EAC, BattlEye) and core Windows security
-# keep working. Defender *telemetry* (sample submission) is allowed; Defender
-# *protection* is not.
+# Every write goes through here, including undo. Blocked means blocked, even if a
+# catalog entry asks for it: anti-cheat and Windows security have to keep working.
+# Defender sample submission (WinUtil's telemetry tweak) is fine, protection is not.
 
 # Registry subtrees SteadyFrame never writes to (prefix match, any value).
 $script:SFGuardBlockedKeys = @(
@@ -99,7 +97,7 @@ function Get-SFGuardServiceKeys {
     return ($all | ForEach-Object { 'HKLM\SYSTEM\CurrentControlSet\Services\' + $_ })
 }
 
-# Returns $null when the registry write is allowed, otherwise the reason.
+# The Test-SF*Write functions return $null when allowed, otherwise the reason.
 function Test-SFRegistryWrite {
     param([Parameter(Mandatory)][string]$Path, [string]$Name = '', $Value = $null, [switch]$Delete)
     $norm = (ConvertTo-SFRegistryKeyName $Path).ToUpperInvariant().TrimEnd('\')
@@ -129,7 +127,7 @@ function Test-SFRegistryWrite {
             }
         }
     }
-    # Image File Execution Options: only the PerfOptions subkey (CPU priority) is allowed.
+    # IFEO is also how malware hijacks programs (Debugger=), so only <exe>\PerfOptions is allowed
     $ifeo = 'HKLM\SOFTWARE\MICROSOFT\WINDOWS NT\CURRENTVERSION\IMAGE FILE EXECUTION OPTIONS\'
     if ($norm.StartsWith($ifeo)) {
         $rest = $norm.Substring($ifeo.Length)
@@ -162,7 +160,7 @@ function Test-SFBcdWrite {
     return $null
 }
 
-# Files are allow-listed: the only file SteadyFrame writes is a CS2 autoexec.cfg.
+# The only file SteadyFrame ever writes is CS2's autoexec.cfg.
 function Test-SFFileWrite {
     param([Parameter(Mandatory)][string]$Path)
     if ($Path -match '\.\.' -or -not [IO.Path]::IsPathRooted($Path)) { return "file path '$Path' is not a plain absolute path" }

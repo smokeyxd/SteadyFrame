@@ -1,6 +1,5 @@
-# The apply pipeline, UI-agnostic: restore point -> WinUtil -> Win11Debloat ->
-# SteadyFrame catalog (last, so its values win and are journaled) -> health
-# check + security baseline diff. A GUI can call Invoke-SFOptimize directly.
+# Order matters: WinUtil and Win11Debloat run first so SteadyFrame's own values
+# are the ones that end up applied (and in the journal).
 
 function New-SFRunDir {
     param([string]$Suffix = '')
@@ -15,7 +14,7 @@ function New-SFRestorePoint {
     $prev = Get-SFRegistryValue $key 'SystemRestorePointCreationFrequency'
     try {
         Enable-ComputerRestore -Drive ($env:SystemDrive + '\') -ErrorAction Stop
-        # Windows silently skips a restore point if one was made in the last 24h; lift that for this one call.
+        # Windows silently skips the restore point if another one is less than 24h old
         Set-SFRegistryValue -Path $key -Name 'SystemRestorePointCreationFrequency' -Kind 'DWord' -Value 0 | Out-Null
         Checkpoint-Computer -Description $Description -RestorePointType 'MODIFY_SETTINGS' -ErrorAction Stop
         return $true
@@ -42,7 +41,7 @@ function Write-SFResult {
 function Invoke-SFOptimize {
     param(
         [Parameter(Mandatory)]$Context,
-        [Parameter(Mandatory)]$Tweaks,              # selected catalog tweak objects, in order
+        [Parameter(Mandatory)]$Tweaks,
         [string[]]$WinUtilIds = @(),
         [string[]]$W11DFlags = @(),
         [ValidateSet('Pinned', 'Latest', 'None')][string]$ExternalSource = 'Pinned',

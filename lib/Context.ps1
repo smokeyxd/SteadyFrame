@@ -1,5 +1,3 @@
-# PC detection. The context object drives which tweaks apply (requirements),
-# which preset is suggested, and what the health check reports.
 
 $script:SFLaptopChassis = @(8, 9, 10, 11, 12, 14, 18, 21, 30, 31, 32)
 
@@ -33,7 +31,7 @@ function Get-SFRamInfo {
         if ($t -eq 26) { $type = 'DDR4' } elseif ($t -eq 34) { $type = 'DDR5' } elseif ($t -eq 24) { $type = 'DDR3' }
         $speed = [int](Get-SFProp $sticks[0] 'ConfiguredClockSpeed' 0)
         if ($speed -le 0) { $speed = [int](Get-SFProp $sticks[0] 'Speed' 0) }
-        # Some firmware reports the memory clock (MHz) instead of the data rate (MT/s).
+        # some boards report the clock (1600) instead of the data rate (3200)
         if ($type -eq 'DDR4' -and $speed -gt 0 -and $speed -le 1600) { $speed = $speed * 2 }
         if ($type -eq 'DDR5' -and $speed -gt 0 -and $speed -le 3000) { $speed = $speed * 2 }
     }
@@ -120,7 +118,7 @@ function Get-SFActiveInterfaces {
 
 function Get-SFBcdValue {
     param([Parameter(Mandatory)][string]$Setting)
-    # Returns: $null = could not read (needs admin), '' = not set, otherwise the raw value
+    # $null = couldn't read it (not admin), '' = not set
     $out = Get-SFSafe { & bcdedit.exe /enum '{current}' 2>&1 }
     if ($LASTEXITCODE -ne 0 -or -not $out) { return $null }
     foreach ($line in @($out)) {
@@ -235,7 +233,6 @@ function Get-SFContext {
     }
 }
 
-# Named requirement predicates used by the catalog ("requires": [...]).
 function Test-SFRequirement {
     param([Parameter(Mandatory)][string]$Name, [Parameter(Mandatory)]$Context)
     $neg = $false
@@ -253,7 +250,7 @@ function Test-SFRequirement {
         '^Printer$' { [bool]$Context.HasPrinter; break }
         '^GamePass$' { -not [bool]$Context.NoGamePass; break }
         '^Ram16Plus$' { $Context.Ram.TotalGB -ge 15; break }
-        '^BitLocker$' { $Context.BitLockerOn -ne $false; break }   # unknown counts as "maybe on" (safe side)
+        '^BitLocker$' { $Context.BitLockerOn -ne $false; break }   # unknown counts as on
         '^GameExe$' { @($Context.GameExes).Count -gt 0; break }
         '^GameDetected$' { @(Get-SFProp $Context 'Games' @()).Count -gt 0; break }
         '^Game:([\w-]+)$' { $gid = $Matches[1]; @(Get-SFProp $Context 'Games' @() | Where-Object { $_.Id -eq $gid }).Count -gt 0; break }

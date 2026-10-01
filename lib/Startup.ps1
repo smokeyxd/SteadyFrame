@@ -1,15 +1,14 @@
-# Startup apps review. Disabling works exactly like Task Manager's "Disable":
-# a StartupApproved flag (first byte 03 = disabled), so every change is a plain
-# registry write that the journal can undo and Task Manager can re-enable.
+# Same switch Task Manager uses: the StartupApproved value, first byte 03 = disabled.
+# Nothing is deleted, so Task Manager can turn any of these back on.
 
 $script:SFStartupApprovedHKCU = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved'
 $script:SFStartupApprovedHKLM = 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved'
 
-# Never offered for disabling (security / anti-cheat helpers).
+# never offered
 $script:SFStartupProtected = 'SecurityHealth|Windows Security|Vanguard|vgtray|EasyAntiCheat|BattlEye|FACEIT|Windows Defender'
-# Shown, but suggested to keep (drivers and their control panels).
+# drivers and peripheral software: shown, but not pre-ticked
 $script:SFStartupKeep = 'Realtek|RtkAud|NVIDIA|NvBackend|Radeon|AMD|igfx|Intel|Synaptics|Elan|ETD|Logitech G HUB|lghub|Razer|SteelSeries|Wooting|ctfmon'
-# Suggested to disable: launchers, chat, updaters, browsers and other always-on tray apps.
+# pre-ticked for disabling: launchers, chat apps, updaters, browsers
 $script:SFStartupSuggestOff = 'EdgeAutoLaunch|Teams|Spotify|Steam|Epic|EADM|EA Desktop|EADesktop|Origin|Ubisoft|Uplay|Battle\.net|Riot Client|Discord|Skype|OneDrive|Cortana|Opera|Brave|Chrome|Firefox|Adobe|CCleaner|iTunes|Overwolf|uTorrent|qBittorrent|BitTorrent|Zoom|Slack|WhatsApp|Telegram|Dropbox|Google Drive|GoogleDrive|Wallpaper|Medal|Outplayed|CurseForge|GOG Galaxy|Copilot|Phone Link|YourPhone'
 
 function Get-SFStartupItems {

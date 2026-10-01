@@ -1,4 +1,4 @@
-# Health check. Read-only: nothing in this file changes the system.
+# Read-only. Nothing in here may change the system.
 
 $script:SFDisplayCs = @'
 using System;
@@ -90,7 +90,7 @@ function Get-SFSecurityBaseline {
     return [pscustomobject]$b
 }
 
-# Returns the list of properties that changed (ignores 'unknown' on either side).
+# 'unknown' on either side is ignored, so a non-admin run can't cause a false alarm
 function Compare-SFSecurityBaseline {
     param([Parameter(Mandatory)]$Before, [Parameter(Mandatory)]$After)
     $changes = @()

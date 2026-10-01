@@ -1,5 +1,4 @@
-# Game profiles: find supported games, print their settings cards, and the
-# optional CS2 autoexec writer. Game definitions live in games\games.json.
+# The games themselves (paths, card text, autoexec lines) are in games\games.json.
 
 $script:SFAutoexecBegin = '// >>> SteadyFrame (Revert.bat removes this block; edit outside it)'
 $script:SFAutoexecEnd = '// <<< SteadyFrame'
@@ -57,7 +56,6 @@ function Get-SFRiotProductDir {
     return $null
 }
 
-# Each result: Id, Name, Dir, Exe, ExeName, Definition
 function Get-SFInstalledGames {
     param([string[]]$SteamLibraries, [string]$RiotMetadataRoot = 'C:\ProgramData\Riot Games\Metadata', [switch]$NoRiotDefaultPath)
     if (-not $PSBoundParameters.ContainsKey('SteamLibraries')) { $SteamLibraries = @(Get-SFSteamLibraries) }
@@ -85,7 +83,6 @@ function Test-SFCardItemShown {
     }
 }
 
-# Plain-text card lines (used for both the console and the saved file).
 function Get-SFGameCardLines {
     param([Parameter(Mandatory)]$Definition, [Parameter(Mandatory)]$Context, [string]$Dir = '')
     $lines = @()
@@ -143,7 +140,7 @@ function New-SFCs2AutoexecBlock {
     return (@($script:SFAutoexecBegin) + $body + @($script:SFAutoexecEnd)) -join "`r`n"
 }
 
-# Replace an existing SteadyFrame block, or append one; everything else in the file is kept.
+# the player's own lines outside our block are never touched
 function Merge-SFMarkedBlock {
     param([string]$Text, [Parameter(Mandatory)][string]$Block)
     $t = if ($null -eq $Text) { '' } else { $Text }
@@ -194,7 +191,7 @@ function Undo-SFFileEntry {
     if ($why) { return (New-SFResult $id 'File' $path 'Blocked' $why) }
     if (-not (Test-Path -LiteralPath $path)) { return (New-SFResult $id 'File' $path 'Skipped' 'file no longer exists') }
     if ($DryRun) { return (New-SFResult $id 'File' $path 'DryRun' 'would remove the SteadyFrame block') }
-    # Only our block is removed, so edits the player made afterwards survive the undo.
+    # remove only our block, so anything they added since then survives the undo
     $rest = Remove-SFMarkedBlock ([IO.File]::ReadAllText($path))
     if (-not [bool](Get-SFProp $b 'Exists' $false) -and $rest.Trim() -eq '') {
         Remove-Item -LiteralPath $path -Force

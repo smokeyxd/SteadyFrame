@@ -1,11 +1,11 @@
-# Console UI helpers. Kept separate from the engine so a GUI can replace them.
+# Console only. Keep engine logic out of here so a GUI can replace this file.
 
 function Read-SFInput {
     param([string]$Prompt)
     Write-Host ''
     Write-Host $Prompt -ForegroundColor White -NoNewline
     $line = Read-Host
-    # $null means input was closed (piped input ran out); callers treat it as cancel/exit.
+    # $null = input closed (piped input ran out). Callers treat it as cancel, otherwise menus loop forever.
     if ($null -eq $line) { return $null }
     return $line.Trim()
 }
@@ -32,8 +32,7 @@ function ConvertFrom-SFNumberList {
     return @($nums | Where-Object { $_ -ge 1 -and $_ -le $Max } | Sort-Object -Unique)
 }
 
-# Rows: Label, Detail, Selected, Locked, LockReason, Section, Group, Tag
-# Returns the rows (Selected updated) or $null when cancelled.
+# Row fields: Label, Detail, Selected, Locked, LockReason, Section, Group, Tag. Returns $null on cancel.
 function Show-SFChecklist {
     param([string]$Title, [Parameter(Mandatory)]$Rows)
     $rows = @($Rows)
@@ -79,7 +78,7 @@ function Show-SFChecklist {
             if (Get-SFProp $r 'Locked' $false) { continue }
             $g = Get-SFProp $r 'Group'
             if ($g) {
-                # radio group: selecting one clears the others; a selected one can be cleared (except updatePolicy)
+                # radio group. updatePolicy always needs one picked, so it can't be cleared
                 if (-not $r.Selected) { foreach ($o in $rows) { if ((Get-SFProp $o 'Group') -eq $g) { $o.Selected = $false } }; $r.Selected = $true }
                 elseif ($g -ne 'updatePolicy') { $r.Selected = $false }
             } else {
@@ -100,7 +99,6 @@ function Format-SFTweakDetail {
     return ($lines -join "`n")
 }
 
-# Wrap catalog rows from Resolve-SFSelection into checklist rows (visible only).
 function ConvertTo-SFChecklistRows {
     param([Parameter(Mandatory)]$Selection)
     $out = foreach ($s in $Selection) {

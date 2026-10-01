@@ -1,5 +1,4 @@
-# Undo a run from its journal: entries are replayed newest-first, so a value
-# changed twice ends up at its original state.
+# Newest entry first, so a value that was changed twice ends up back at the original.
 
 function Invoke-SFRevert {
     param([Parameter(Mandatory)][string]$JournalPath, [string[]]$TweakIds = @(), [switch]$DryRun)

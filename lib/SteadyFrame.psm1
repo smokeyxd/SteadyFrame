@@ -1,7 +1,5 @@
-# SteadyFrame engine module.
-# Every component lives in its own .ps1 file and is dot-sourced here so all
-# functions share one module scope and can call each other freely.
-# Windows PowerShell 5.1 compatible: keep these files ASCII-only.
+# Dot-sourced so everything shares one module scope.
+# Keep every file ASCII-only: PS 5.1 reads BOM-less UTF-8 as ANSI and mangles it.
 
 $script:SFLibRoot = $PSScriptRoot
 $script:SFRoot = Split-Path -Parent $PSScriptRoot

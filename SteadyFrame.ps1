@@ -119,8 +119,16 @@ function Show-Advanced {
         Write-Host ('  6) Dry run ..................... {0}   (show what would change, change nothing)' -f $(if ($opts.DryRun) { 'yes' } else { 'no' }))
         Write-Host '  0) Back'
         switch (Read-SFInput '  Choice: ') {
-            '1' { $opts.ExternalSource = @{ Pinned = 'Latest'; Latest = 'None'; None = 'Pinned' }[$opts.ExternalSource]
-                if ($opts.ExternalSource -eq 'Latest') { Write-Host '  Latest = whatever was published today, NOT hash-checked. Use only if you know why.' -ForegroundColor Yellow } }
+            '1' {
+                Write-Host '    1) Pinned - the reviewed versions, checked before running (default)'
+                Write-Host '    2) Latest - whatever was published today, NOT checked'
+                Write-Host '    3) None   - never run WinUtil / Win11Debloat, only SteadyFrame''s own tweaks'
+                switch (Read-SFInput '    Source: ') {
+                    '1' { $opts.ExternalSource = 'Pinned' }
+                    '2' { $opts.ExternalSource = 'Latest'; Write-Host '    Only use Latest if you know why: it runs code nobody has reviewed for this tool.' -ForegroundColor Yellow }
+                    '3' { $opts.ExternalSource = 'None' }
+                }
+            }
             '2' { $opts.UpdatePolicy = @{ DeferFeature = 'SecurityOnly'; SecurityOnly = 'Leave'; Leave = 'DeferFeature' }[$opts.UpdatePolicy] }
             '3' { $opts.ShowAll = -not $opts.ShowAll }
             '4' {
@@ -140,12 +148,8 @@ function Start-Optimize {
     param([string]$PresetName)
     $policy = $opts.UpdatePolicy
     $sel = @(Resolve-SFSelection -Catalog $catalog -Context $ctx -Preset $PresetName -Include $Include -Exclude $Exclude -UpdatePolicy $policy -ShowAll:$opts.ShowAll)
-    $wu = @()
-    $wd = @()
-    if ($opts.ExternalSource -ne 'None') {
-        $wu = @(Resolve-SFExternalSelection -Tool 'winutil' -Context $ctx -Preset $PresetName -Include $Include -Exclude $Exclude -ShowAll:$opts.ShowAll)
-        $wd = @(Resolve-SFExternalSelection -Tool 'win11debloat' -Context $ctx -Preset $PresetName -Include $Include -Exclude $Exclude -ShowAll:$opts.ShowAll)
-    }
+    # can be switched off for this run below, when the PC was already debloated
+    $source = $opts.ExternalSource
 
     if ($interactive) {
         $findings = Invoke-HealthCheck -Save
@@ -154,16 +158,42 @@ function Start-Optimize {
         Write-Host ''
         Write-Host '  Tip: record a CapFrameX/PresentMon baseline in your main game NOW (same scene, 3 x 60-90 s)' -ForegroundColor DarkGray
         Write-Host '  so you can compare average / 1% / 0.1% lows after the reboot.' -ForegroundColor DarkGray
-        [void](Read-SFInput '  Press Enter to review the changes...')
 
+        if ($source -ne 'None' -and $PresetName -ne 'Minimal') {
+            $traces = @(Get-SFPriorDebloatTraces)
+            Write-SFHeader 'Debloat tools (WinUtil + Win11Debloat)'
+            if ($traces.Count -gt 0) {
+                Write-Host ('  This PC has traces of: {0}. If it was already debloated, skip them.' -f ($traces -join ', '))
+            } else {
+                Write-Host '  No traces of Talon, WinUtil or Win11Debloat found (temp folders get cleaned, so this is only a guess).'
+            }
+            $skipDefault = ($traces.Count -gt 0)
+            Write-Host ('  1) Skip them - only SteadyFrame''s own tweaks{0}' -f $(if ($skipDefault) { '   (default)' } else { '' }))
+            Write-Host ('  2) Run them too{0}' -f $(if (-not $skipDefault) { '   (default)' } else { '' }))
+            $ans = Read-SFInput '  Choice (Enter = default): '
+            if ($null -eq $ans) { return }
+            if ($ans -eq '1' -or ($ans -eq '' -and $skipDefault)) { $source = 'None' }
+        } else {
+            [void](Read-SFInput '  Press Enter to review the changes...')
+        }
+    }
+
+    $wu = @()
+    $wd = @()
+    if ($source -ne 'None') {
+        $wu = @(Resolve-SFExternalSelection -Tool 'winutil' -Context $ctx -Preset $PresetName -Include $Include -Exclude $Exclude -ShowAll:$opts.ShowAll)
+        $wd = @(Resolve-SFExternalSelection -Tool 'win11debloat' -Context $ctx -Preset $PresetName -Include $Include -Exclude $Exclude -ShowAll:$opts.ShowAll)
+    }
+
+    if ($interactive) {
         $rows = ConvertTo-SFChecklistRows $sel
         $picked = Show-SFChecklist -Title ("SteadyFrame tweaks - preset {0} (CHECKED = will be applied)" -f $PresetName) -Rows $rows
         if ($null -eq $picked) { return }
         foreach ($r in $picked) { $r.Source.Selected = $r.Selected }
 
-        if ($opts.ExternalSource -ne 'None') {
+        if ($source -ne 'None') {
             $erows = @(ConvertTo-SFExternalRows $wu 'Chris Titus WinUtil') + @(ConvertTo-SFExternalRows $wd 'Raphire Win11Debloat')
-            $epicked = Show-SFChecklist -Title ('Debloat and privacy tools ({0} source) - CHECKED = will be applied' -f $opts.ExternalSource) -Rows $erows
+            $epicked = Show-SFChecklist -Title ('Debloat and privacy tools ({0} source) - CHECKED = will be applied' -f $source) -Rows $erows
             if ($null -eq $epicked) { return }
             foreach ($r in $epicked) { $r.Source.Selected = $r.Selected }
         }
@@ -194,7 +224,7 @@ function Start-Optimize {
     }
 
     try {
-        $summary = Invoke-SFOptimize -Context $ctx -Tweaks $tweaks -WinUtilIds $wuIds -W11DFlags $wdFlags -ExternalSource $opts.ExternalSource `
+        $summary = Invoke-SFOptimize -Context $ctx -Tweaks $tweaks -WinUtilIds $wuIds -W11DFlags $wdFlags -ExternalSource $source `
             -Preset $PresetName -DryRun:$opts.DryRun -Interactive:$interactive -NoRestorePoint:$NoRestorePoint
     } catch {
         Write-SFStatus 'FAIL' $_.Exception.Message

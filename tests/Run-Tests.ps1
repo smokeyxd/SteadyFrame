@@ -363,6 +363,21 @@ It 'pinned download with a wrong hash is deleted and never returned' {
     }
 }
 
+It 'spots folders left by Talon / WinUtil / Win11Debloat' {
+    $oldLocal = $env:LOCALAPPDATA; $oldTemp = $env:TEMP
+    $fake = Join-Path $oldTemp ('sf-traces-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path (Join-Path $fake 'local'), (Join-Path $fake 'temp') -Force | Out-Null
+    try {
+        $env:LOCALAPPDATA = Join-Path $fake 'local'; $env:TEMP = Join-Path $fake 'temp'
+        Assert-Equal 0 @(Get-SFPriorDebloatTraces).Count 'clean PC'
+        New-Item -ItemType Directory -Path (Join-Path $env:LOCALAPPDATA 'Talon'), (Join-Path $env:LOCALAPPDATA 'winutil') -Force | Out-Null
+        Assert-Equal 'Talon,WinUtil' (@(Get-SFPriorDebloatTraces) -join ',')
+    } finally {
+        $env:LOCALAPPDATA = $oldLocal; $env:TEMP = $oldTemp
+        Remove-Item -LiteralPath $fake -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 It 'shipped external configs only contain allowed options' {
     foreach ($tool in @('winutil', 'win11debloat')) {
         foreach ($it in (Get-SFExternalItems $tool)) { Assert-Null (Test-SFExternalOption $tool $it.id) "$tool $($it.id)" }

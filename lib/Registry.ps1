@@ -1,5 +1,6 @@
-# Registry access through the .NET API (64-bit view) so values like
-# 0xFFFFFFFF DWORDs, binary blobs and REG_EXPAND_SZ round-trip exactly.
+# Uses the .NET registry API instead of Get/Set-ItemProperty, which expands %VARS% in
+# REG_EXPAND_SZ values on read; restoring that value later would no longer be exact.
+# Always the 64-bit view, even if someone starts the 32-bit PowerShell.
 
 $script:SFHiveMap = @{
     'HKLM' = 'LocalMachine'; 'HKEY_LOCAL_MACHINE' = 'LocalMachine'
@@ -44,9 +45,8 @@ function Test-SFRegistryKey {
     finally { $base.Close() }
 }
 
-# Serialized form used in the journal and for comparisons:
-#   DWord -> unsigned number, QWord -> string, Binary -> hex string,
-#   MultiString -> string array, String/ExpandString -> string
+# How values are stored in the journal: DWord as unsigned number, QWord as string (JSON
+# loses precision above 2^53), Binary as hex, MultiString as array, everything else as string.
 function ConvertTo-SFSerializedValue {
     param($Value, [string]$Kind)
     switch ($Kind) {
@@ -90,7 +90,7 @@ function Get-SFRegistryValue {
     } finally { $base.Close() }
 }
 
-# Returns the top-most key that had to be created ('' when the key already existed).
+# Returns the top-most key it had to create ('' if none), so undo can remove it again.
 function Set-SFRegistryValue {
     param([Parameter(Mandatory)][string]$Path, [string]$Name = '', [Parameter(Mandatory)][string]$Kind, $Value)
     $s = Split-SFRegistryPath $Path
@@ -126,7 +126,7 @@ function Remove-SFRegistryValue {
     } finally { $base.Close() }
 }
 
-# Delete $Path and its parents up to and including $StopAt, but only while each is empty.
+# Walks up from $Path to $StopAt deleting keys, and stops at the first one that isn't empty.
 function Remove-SFEmptyRegistryKeys {
     param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$StopAt)
     $s = Split-SFRegistryPath $Path

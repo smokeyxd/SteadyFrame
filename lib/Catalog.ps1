@@ -1,6 +1,4 @@
-# Tweak catalog: load, validate, check applicability, resolve a selection.
-# Tiers: A = proven / vendor-documented, B = situational, C = weak evidence,
-# placebo or cosmetic (Advanced only, never in a preset).
+# Tier C (weak evidence / placebo) must never end up in a preset; Test-SFCatalog enforces it.
 
 $script:SFKnownActions = @('Registry', 'RegistryToken', 'Service', 'PowerScheme', 'PowerSetting', 'Hibernate', 'Bcd',
     'ScheduledTask', 'NetAdapterProperty', 'MMAgent', 'Pagefile', 'StartupReview', 'Cs2Autoexec')
@@ -26,7 +24,6 @@ function Import-SFCatalog {
     return @($tweaks | Sort-Object categoryOrder, @{ Expression = { [int](Get-SFProp $_ 'order' 100) } }, fileIndex)
 }
 
-# Returns a list of problems (empty = valid).
 function Test-SFCatalog {
     param([Parameter(Mandatory)]$Catalog)
     $errors = @()
@@ -76,7 +73,6 @@ function Test-SFRequirementName {
     return $null
 }
 
-# Applies = all tweak-level requirements pass. Reason explains why not.
 function Get-SFApplicability {
     param([Parameter(Mandatory)]$Tweak, [Parameter(Mandatory)]$Context)
     foreach ($r in @(Get-SFProp $Tweak 'requires' @())) {
@@ -87,7 +83,6 @@ function Get-SFApplicability {
     return [pscustomobject]@{ Applies = $true; Reason = '' }
 }
 
-# Builds the working list: every tweak with Applies/Reason/Selected/Visible.
 function Resolve-SFSelection {
     param(
         [Parameter(Mandatory)]$Catalog, [Parameter(Mandatory)]$Context,
@@ -107,7 +102,7 @@ function Resolve-SFSelection {
         if ($Include -contains $id) { $sel = $true }
         if ($Exclude -contains $id) { $sel = $false }
         if (-not $app.Applies) { $sel = $false }
-        # Leftover fixes only matter when the leftover exists; otherwise they are just clutter.
+        # hide leftover fixes when there's nothing to fix
         $isFix = (@(Get-SFProp $t 'requires' @()) | Where-Object { $_ -like 'Leftover:*' }).Count -gt 0
         [pscustomobject]@{
             Id = $id; Tweak = $t; Tier = $t.tier; Category = $t.category; Group = $group

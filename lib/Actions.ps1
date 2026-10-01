@@ -1,6 +1,5 @@
-# Typed action handlers. Each handler: read current state -> Guard -> (DryRun?)
-# -> apply -> journal "before" -> result. Undo-SFJournalEntry reverses one entry.
-# Nothing here parses localized text: GUIDs, registry keywords and numbers only.
+# Don't parse command output text in here: it's translated on non-English Windows.
+# Stick to GUIDs, registry keywords and numbers.
 
 $script:SFPowerGuids = @{
     Balanced         = '381b4222-f694-41f0-9685-ff5bb260df2e'
@@ -70,7 +69,7 @@ function Get-SFPhysicalAdapters {
     return @(Get-NetAdapter -Physical -ErrorAction SilentlyContinue | Where-Object { $_.InterfaceDescription -notmatch $skip })
 }
 
-# Class keys (Control\Class\{net}\NNNN) of the physical adapters, for PnPCapabilities.
+# PnPCapabilities lives in the adapter's Control\Class\{net}\NNNN key, not under Services.
 function Get-SFNicClassKeys {
     $guids = @(Get-SFPhysicalAdapters | ForEach-Object { "$($_.InterfaceGuid)".ToLowerInvariant() })
     $keys = @()
@@ -213,7 +212,7 @@ function Invoke-SFRegistryAction {
 function Invoke-SFRegistryTokenAction {
     param($Action, $TweakId, $Context, $Journal, [switch]$DryRun)
     $path = Get-SFProp $Action 'path'
-    # The value name can be a template too (per-game GPU preference uses the game's exe path).
+    # name can be a template too: the per-game GPU preference is keyed by exe path
     $names = @(Expand-SFTemplate (Get-SFProp $Action 'name') $Context)
     if ($names.Count -eq 0) { return (New-SFResult $TweakId 'RegistryToken' $path 'Skipped' 'nothing to apply on this PC' -Quiet) }
     $results = foreach ($name in $names) {

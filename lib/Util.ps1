@@ -1,11 +1,8 @@
-# Small shared helpers: safe property access, JSON IO, console output.
-
 function Get-SFVersion { $script:SFVersion }
 
 function Get-SFRoot { $script:SFRoot }
 
-# Read a property from a PSCustomObject or hashtable without throwing when it
-# is missing. Catalog and journal entries use many optional fields.
+# Most catalog/journal fields are optional; this works on JSON objects and hashtables alike.
 function Get-SFProp {
     param($Object, [string]$Name, $Default = $null)
     if ($null -eq $Object) { return $Default }
@@ -24,7 +21,7 @@ function Read-SFJson {
     return ($raw | ConvertFrom-Json)
 }
 
-# BOM-less UTF-8 so other tools (a future Rust/Go GUI) can read it directly.
+# no BOM: most JSON readers outside PowerShell trip over it
 function Save-SFJson {
     param([Parameter(Mandatory)]$Object, [Parameter(Mandatory)][string]$Path)
     $dir = Split-Path -Parent $Path
@@ -56,7 +53,6 @@ function Write-SFStatus {
     Write-Host $Text
 }
 
-# Convert bytes <-> hex so binary registry values survive JSON round trips.
 function ConvertTo-SFHex {
     param([byte[]]$Bytes)
     if ($null -eq $Bytes) { return '' }
@@ -80,8 +76,8 @@ function New-SFResult {
         [ValidateSet('Applied', 'DryRun', 'AlreadySet', 'Skipped', 'Blocked', 'Failed')][string]$Status,
         [string]$Message = '', $Before = $null, $After = $null, [switch]$Quiet
     )
-    # Quiet = "doesn't exist on this PC" noise (an adapter without that setting, a Home-only line on Pro):
-    # kept in summary.json, hidden from the console and the counts.
+    # Quiet: "not on this PC" noise, like an adapter without that setting. Still in summary.json,
+    # just not printed or counted.
     [pscustomobject]@{
         TweakId = $TweakId; Action = $Action; Target = $Target; Status = $Status
         Message = $Message; Before = $Before; After = $After; Quiet = [bool]$Quiet

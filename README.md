@@ -18,9 +18,12 @@ Everything it changes is shown to you first, and the changes can be undone.
    things to fix outside Windows, for example turning on XMP/EXPO in the BIOS.
 3. (Optional) Record a benchmark in your main game first. See [Checking the results](#checking-the-results).
 4. Double-click **`Run.bat`** and pick the option marked *recommended for this PC*.
-5. Go through the lists. Everything that will change is ticked; type a number to untick it,
+5. It asks whether to run the debloat tools (WinUtil and Win11Debloat). If the PC already went
+   through Talon, WinUtil or Win11Debloat, choose *Skip* and only SteadyFrame's own settings are
+   applied. It looks for the folders those tools leave behind and suggests an answer.
+6. Go through the lists. Everything that will change is ticked; type a number to untick it,
    press Enter to continue. Nothing happens until you type `YES` on the summary screen.
-6. Restart the PC when it's done.
+7. Restart the PC when it's done.
 
 To undo, double-click **`Revert.bat`** and pick the run you want to undo. SteadyFrame also creates a
 Windows restore point before changing anything, which undoes everything at once

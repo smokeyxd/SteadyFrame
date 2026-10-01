@@ -1,6 +1,5 @@
-# Runs Chris Titus WinUtil and Raphire Win11Debloat with curated options.
-# Default source is a pinned, reviewed release verified by SHA256 before it
-# runs. Downloads are cached in tools\cache so a USB copy works offline.
+# Pinned downloads are checked against pins.json before anything runs. A mismatch
+# deletes the file; never fall back to running it anyway.
 
 function Get-SFExternalPaths {
     $root = Get-SFRoot
@@ -28,7 +27,6 @@ function Invoke-SFDownload {
     Move-Item -LiteralPath $tmp -Destination $OutFile -Force
 }
 
-# Returns @{ Path; Sha256; Tag; Source } for a ready-to-run, verified file.
 function Get-SFExternalTool {
     param([Parameter(Mandatory)][ValidateSet('winutil', 'win11debloat')][string]$Tool, [ValidateSet('Pinned', 'Latest')][string]$Source = 'Pinned')
     $paths = Get-SFExternalPaths
@@ -53,7 +51,7 @@ function Get-SFExternalTool {
         return [pscustomobject]@{ Path = $file; Sha256 = $hash; Tag = $pin.tag; Source = 'Pinned' }
     }
 
-    # Latest: no hash to compare against, so log exactly what ran.
+    # nothing to check "latest" against, so at least log the hash of what ran
     $url = $pin.latestUrl
     $tag = 'latest'
     if ($Tool -eq 'win11debloat') {
@@ -78,7 +76,6 @@ function Get-SFExternalItems {
     return @($cfg.items)
 }
 
-# Rows like Resolve-SFSelection, for the external tool checklists.
 function Resolve-SFExternalSelection {
     param(
         [Parameter(Mandatory)][ValidateSet('winutil', 'win11debloat')][string]$Tool, [Parameter(Mandatory)]$Context,
@@ -142,7 +139,16 @@ function Invoke-SFWin11Debloat {
     return $p.ExitCode
 }
 
-# Pre-download both pinned tools into tools\cache (for offline/USB use).
+# Only used to pick the default answer. Temp gets cleaned, so finding nothing proves nothing.
+function Get-SFPriorDebloatTraces {
+    $traces = @(
+        @{ Name = 'Talon'; Path = (Join-Path $env:LOCALAPPDATA 'Talon') }
+        @{ Name = 'WinUtil'; Path = (Join-Path $env:LOCALAPPDATA 'winutil') }
+        @{ Name = 'Win11Debloat'; Path = (Join-Path $env:TEMP 'Win11Debloat') }
+    )
+    return @($traces | Where-Object { $_.Path -and (Test-Path -LiteralPath $_.Path) } | ForEach-Object { $_.Name })
+}
+
 function Invoke-SFPrefetch {
     foreach ($t in @('winutil', 'win11debloat')) {
         $r = Get-SFExternalTool -Tool $t -Source 'Pinned'

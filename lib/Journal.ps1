@@ -1,12 +1,11 @@
-# Undo journal: every change records its "before" state the moment it is made,
-# and the file is flushed after each entry so a crash mid-run is still revertible.
+# Saved after every single entry, so a run that crashes halfway can still be undone.
 
 function New-SFJournal {
     param([Parameter(Mandatory)][string]$Root, [hashtable]$Meta = @{})
     $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
     $dir = Join-Path $Root ('{0}_{1}' -f $env:COMPUTERNAME, $stamp)
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
-    # PowerShell variable names are case-insensitive, so this must not be called $meta.
+    # not $meta: variable names are case-insensitive, that would overwrite the $Meta parameter
     $header = [ordered]@{
         Computer = $env:COMPUTERNAME
         User     = [Security.Principal.WindowsIdentity]::GetCurrent().Name
@@ -59,7 +58,6 @@ function Read-SFJournal {
     }
 }
 
-# Newest first. Each item: Path, Dir, Name, Started, Count, Reverted
 function Get-SFJournals {
     param([Parameter(Mandatory)][string]$Root)
     if (-not (Test-Path -LiteralPath $Root)) { return @() }
