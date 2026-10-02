@@ -38,7 +38,8 @@ param(
     [switch]$NoRestorePoint,
     [switch]$Prefetch,
     [switch]$Revert,
-    [switch]$GameCards
+    [switch]$GameCards,
+    [switch]$NoUpdateCheck
 )
 
 Import-Module (Join-Path $PSScriptRoot 'lib\SteadyFrame.psm1') -Force -DisableNameChecking
@@ -279,8 +280,11 @@ if ($Preset -ne 'Auto') {
     return
 }
 
+$update = if ($NoUpdateCheck) { $null } else { Get-SFUpdate }
+
 while ($true) {
     Show-SFBanner $ctx
+    if ($update) { Write-Host ('  SteadyFrame {0} is out (you have {1}). Type U to get it.' -f $update.Version, (Get-SFVersion)) -ForegroundColor Cyan }
     $other = Get-OtherTier
     Write-Host ''
     Write-Host '  1) Health check only (changes nothing)'
@@ -314,6 +318,7 @@ while ($true) {
             [void](Read-SFInput '  Enter to go back...')
         }
         '^(?i)adv(anced)?$' { Show-Advanced }
+        '^(?i)u$' { if ($update) { Show-SFUpdate $update; [void](Read-SFInput '  Enter to go back...') } }
         '^0$' { return }
         default { }
     }

@@ -630,6 +630,61 @@ It 'Revert lists journals from the new and the old location, newest first, no du
     Remove-Item -LiteralPath $base -Recurse -Force
 }
 
+Write-Host 'Updates' -ForegroundColor Cyan
+
+It 'compares versions as numbers, ignores tags that are not versions' {
+    Assert-True (Test-SFNewerVersion 'v0.1.2' '0.1.1')
+    Assert-True (Test-SFNewerVersion '0.1.10' '0.1.9') 'not a string compare'
+    Assert-True (-not (Test-SFNewerVersion '0.1.1' '0.1.1'))
+    Assert-True (-not (Test-SFNewerVersion '0.1.0' '0.1.1'))
+    Assert-True (-not (Test-SFNewerVersion 'v0.2.0-beta' '0.1.1'))
+    Assert-True (-not (Test-SFNewerVersion '' '0.1.1'))
+}
+
+It 'release notes lose control characters and Markdown, and get cut short' {
+    $notes = "### What changed`r`n`r`n- **bold** and ``code``" + [char]27 + "[31m red`n" + ((1..30 | ForEach-Object { "line $_" }) -join "`n")
+    $lines = @(Format-SFReleaseNotes $notes -MaxLines 5)
+    Assert-Equal 6 $lines.Count
+    Assert-Equal 'What changed' $lines[0]
+    Assert-Equal '- bold and code[31m red' $lines[1]
+    Assert-Equal '...' $lines[5]
+}
+
+$updBase = Join-Path $env:TEMP ('sf-upd-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path (Join-Path $updBase 'src\SteadyFrame') -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $updBase 'src\SteadyFrame\SteadyFrame.ps1') -Value '# fake' -Encoding Ascii
+$updZip = Join-Path $updBase 'SteadyFrame-9.9.9.zip'
+Compress-Archive -Path (Join-Path $updBase 'src\SteadyFrame') -DestinationPath $updZip
+function New-FakeRelease([string]$Digest) {
+    [pscustomobject]@{ Version = '9.9.9'; Url = 'https://example.invalid'; Notes = ''
+        Asset = [pscustomobject]@{ name = 'SteadyFrame-9.9.9.zip'; browser_download_url = ([uri]$updZip).AbsoluteUri; digest = $Digest } }
+}
+
+It 'installs a release into a new folder next to this one when the checksum matches' {
+    $parent = Join-Path $updBase 'ok'
+    New-Item -ItemType Directory -Path $parent | Out-Null
+    $r = Install-SFUpdate -Release (New-FakeRelease ('sha256:' + (Get-SFFileSha256 $updZip).ToUpperInvariant())) -Parent $parent
+    Assert-True $r.Checked
+    Assert-True (Test-Path -LiteralPath (Join-Path $parent 'SteadyFrame-9.9.9\SteadyFrame.ps1'))
+    Assert-True (-not (Test-Path -LiteralPath (Join-Path $parent 'SteadyFrame-9.9.9.part')))
+    $again = $null
+    try { Install-SFUpdate -Release (New-FakeRelease '') -Parent $parent } catch { $again = $_.Exception.Message }
+    Assert-True ($again -like '*already exists*') 'never overwrites a folder'
+}
+
+It 'a checksum mismatch installs nothing and leaves nothing behind' {
+    $parent = Join-Path $updBase 'bad'
+    New-Item -ItemType Directory -Path $parent | Out-Null
+    $err = $null
+    try { Install-SFUpdate -Release (New-FakeRelease ('sha256:' + ('0' * 64))) -Parent $parent } catch { $err = $_.Exception.Message }
+    Assert-True ($err -like 'Checksum mismatch*') "got: $err"
+    Assert-Equal 0 @(Get-ChildItem -LiteralPath $parent).Count
+}
+
+Remove-Item -LiteralPath $updBase -Recurse -Force -ErrorAction SilentlyContinue
+
+Write-Host 'Misc' -ForegroundColor Cyan
+
 It 'number list parser handles ranges, commas and junk' {
     Assert-Equal '1,2,3,5' ((ConvertFrom-SFNumberList '1-3, 5' 10) -join ',')
     Assert-Equal '2' ((ConvertFrom-SFNumberList '2 99' 10) -join ',')

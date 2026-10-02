@@ -134,11 +134,12 @@ function ConvertTo-SFBcdBool {
     return 'no'
 }
 
-# Last day of security updates for Home/Pro. Enterprise, Education and LTSC run longer and get $null.
+# Home/Pro dates. Enterprise, Education and LTSC are supported longer, so they get $null.
 $script:SFWin11EndOfService = @{
     '21H2' = '2023-10-10'; '22H2' = '2024-10-08'; '23H2' = '2025-11-11'; '24H2' = '2026-10-13'; '25H2' = '2027-10-12'
 }
-# never lock a Windows version (TargetReleaseVersion) with less support left than this
+# A locked version that runs out of support gets no security updates until Windows forces the
+# upgrade, up to 60 days later. So never lock one with less support left than this.
 $script:SFMinSupportDays = 90
 
 function Get-SFWindowsEndOfService {

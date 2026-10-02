@@ -33,6 +33,12 @@ To undo
 - A Windows restore point is made before every run. It undoes everything,
   including the debloat tools: press Win+R, type rstrui, press Enter.
 
+New versions
+------------
+When a new version is out, the menu says so. Type U to download it. It goes
+into a new folder next to this one; open Run.bat from there. Nothing updates
+by itself.
+
 If you see "Windows protected your PC"
 --------------------------------------
 That's SmartScreen. Windows shows it for scripts from the internet that aren't

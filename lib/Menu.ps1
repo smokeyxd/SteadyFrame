@@ -146,3 +146,20 @@ function Show-SFBanner {
     if ($Context.IsDualCcdX3D) { Write-Host '  Dual-CCD X3D detected: keeping Balanced plan + Xbox Game Bar (AMD V-Cache driver needs them).' -ForegroundColor Yellow }
     if ($Context.IsIntelRaptor) { Write-Host '  Intel 13th/14th gen detected: the health check verifies the Vmin-shift microcode fix.' -ForegroundColor Yellow }
 }
+
+function Show-SFUpdate {
+    param([Parameter(Mandatory)]$Release)
+    Write-SFHeader ('SteadyFrame ' + $Release.Version)
+    foreach ($line in (Format-SFReleaseNotes $Release.Notes)) { Write-Host ('  ' + $line) -ForegroundColor Gray }
+    Write-Host ''
+    Write-Host ('  Full notes: ' + $Release.Url) -ForegroundColor DarkGray
+    Write-Host ('  It goes in a new folder: ' + (Join-Path (Split-Path -Parent (Get-SFRoot)) ('SteadyFrame-' + $Release.Version)))
+    Write-Host '  This folder stays as it is, and the undo history works from both.' -ForegroundColor DarkGray
+    if (-not (Confirm-SF '  Download it?' -DefaultYes)) { return }
+    try { $r = Install-SFUpdate -Release $Release }
+    catch { Write-SFStatus 'FAIL' $_.Exception.Message; return }
+    $how = if ($r.Checked) { 'checksum matches the one on GitHub' } else { 'GitHub listed no checksum, SHA256 ' + $r.Sha256 }
+    Write-SFStatus 'OK' ('Downloaded to {0} ({1})' -f $r.Path, $how)
+    try { Start-Process -FilePath 'explorer.exe' -ArgumentList ('"{0}"' -f $r.Path) } catch { }
+    Write-Host '  Close this window and open Run.bat in the new folder. You can delete this old folder afterwards.' -ForegroundColor White
+}

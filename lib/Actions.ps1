@@ -463,7 +463,6 @@ function Undo-SFJournalEntry {
                 & powercfg.exe /setacvalueindex $scheme (Get-SFProp $t 'Subgroup') (Get-SFProp $t 'Setting') ([int64](Get-SFProp $b 'AC')) 2>&1 | Out-Null
                 $acExit = $LASTEXITCODE
                 & powercfg.exe /setdcvalueindex $scheme (Get-SFProp $t 'Subgroup') (Get-SFProp $t 'Setting') ([int64](Get-SFProp $b 'DC')) 2>&1 | Out-Null
-                # fails when the plan no longer exists, e.g. this run was already undone once
                 if ($acExit -ne 0 -or $LASTEXITCODE -ne 0) { throw "powercfg could not restore $label (exit $acExit/$LASTEXITCODE)" }
                 if ((Get-SFActivePowerScheme) -eq $scheme) { & powercfg.exe /setactive $scheme 2>&1 | Out-Null }
                 return (New-SFResult $id 'PowerSetting' $label 'Applied' 'restored')

@@ -117,10 +117,17 @@ Only WinUtil and Win11Debloat, from their official GitHub releases. By default i
 versions that were read through before being added, and checks each download's SHA256 fingerprint
 before running it. If the fingerprint doesn't match, the file is deleted and not run.
 
-SteadyFrame itself doesn't send any data anywhere; the only thing it connects to is GitHub, to download
-those two tools. If you don't want them at all, open Advanced (type `adv` in the main menu) and set the
-source to *None*. With `-Prefetch` you can download them once and then use the folder on PCs without
-internet.
+SteadyFrame itself doesn't send any data anywhere. It only connects to GitHub: to download those two
+tools, and when the menu opens, to ask for the latest SteadyFrame version number. If you don't want the
+tools at all, open Advanced (type `adv` in the main menu) and set the source to *None*. With
+`-Prefetch` you can download them once and then use the folder on PCs without internet.
+
+### Updates
+
+When a newer version is out, the menu says so. Type `U` to see what changed and download it. It goes
+into a new folder next to the current one (for example `SteadyFrame-0.1.3`), and the GitHub checksum
+is checked first. Nothing updates by itself and nothing runs until you open `Run.bat` in the new folder.
+The undo history keeps working from either folder. `-NoUpdateCheck` skips the version check.
 
 ## Games
 
@@ -194,6 +201,7 @@ For people who prefer it, or for scripting:
 .\SteadyFrame.ps1 -Revert                            # undo menu
 .\SteadyFrame.ps1 -Prefetch                          # download the two tools now, for offline use later
 .\SteadyFrame.ps1 -ListTweaks -Json                  # every setting and whether it applies, as JSON
+.\SteadyFrame.ps1 -NoUpdateCheck                     # don't ask GitHub for the latest version
 ```
 
 ## For contributors
