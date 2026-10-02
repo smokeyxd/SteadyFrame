@@ -1,0 +1,50 @@
+SteadyFrame - how to use it
+===========================
+
+SteadyFrame changes Windows settings on gaming PCs to try to get smoother,
+more even frame times. It doesn't promise more FPS. It shows every change
+before making it, and everything can be undone.
+
+Before you start
+----------------
+- Extract the zip first (right-click the zip, Extract All). It doesn't work
+  from inside the zip.
+- Run it from the Windows account you play games on.
+- Close your games.
+
+Step 1: HealthCheck.bat
+-----------------------
+Double-click it. It only looks and changes nothing. At the end it lists things
+to fix outside Windows, like turning on XMP/EXPO in the BIOS.
+
+Step 2: Run.bat
+---------------
+Double-click it and click Yes when Windows asks for admin rights.
+Pick the option marked "recommended for this PC".
+It shows lists of every change. Type a number to untick something, press Enter
+to go on. Nothing changes until you type YES on the last screen.
+
+Step 3: restart the PC
+----------------------
+
+To undo
+-------
+- Revert.bat undoes SteadyFrame's changes. Pick the run you want to undo.
+- A Windows restore point is made before every run. It undoes everything,
+  including the debloat tools: press Win+R, type rstrui, press Enter.
+
+If you see "Windows protected your PC"
+--------------------------------------
+That's SmartScreen. Windows shows it for scripts from the internet that aren't
+signed by a company. Click "More info", then "Run anyway". The files are plain
+text if you want to read them first.
+
+Never touched
+-------------
+Antivirus (Windows Defender), Memory integrity / VBS, Secure Boot, TPM, UAC,
+the firewall and CPU security fixes. Games with anti-cheat keep working.
+
+More details
+------------
+README.md has every setting and why it's there, plus command line options.
+It's also on https://github.com/smokeyxd/SteadyFrame

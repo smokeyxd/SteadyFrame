@@ -200,6 +200,7 @@ For people who prefer it, or for scripting:
 
 ```
 Run.bat, HealthCheck.bat, Revert.bat   launchers
+How to use.txt                         short guide for people who won't open this README
 SteadyFrame.ps1                        menu and command line
 lib\                                   the engine (Guard.ps1 holds the never-touch rules)
 catalog\*.json                         SteadyFrame's settings: tier, reason, what it may break, source
@@ -208,6 +209,9 @@ external\                              options passed to WinUtil / Win11Debloat,
 tools\Update-Pin.ps1                   move a pinned tool to a newer version
 tests\Run-Tests.ps1                    tests (no admin needed, only touch a test registry key and %TEMP%)
 ```
+
+`tests\`, `tools\` and the git files are left out of the release zip (see `.gitattributes`); clone the
+repo to get them.
 
 Run the tests with:
 
