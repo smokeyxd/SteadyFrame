@@ -12,6 +12,9 @@ which settings have proof behind them and which don't.
 
 Everything it changes is shown to you first, and the changes can be undone.
 
+I made this for me and my friends, because it was easier than setting up every PC by hand. If you
+want to improve it, you're welcome to: open an issue or a pull request.
+
 ## How to use it
 
 1. Download the zip and extract it (right-click, *Extract All*). Running it from inside the zip
