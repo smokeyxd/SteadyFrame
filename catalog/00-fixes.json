@@ -69,6 +69,21 @@
       "actions": [ { "type": "Service", "name": "BITS", "startType": "Manual" } ]
     },
     {
+      "id": "fix.version-lock",
+      "name": "Unlock the Windows version (it stops getting security updates soon)",
+      "tier": "A",
+      "why": "A policy (from SteadyFrame or another tool) keeps Windows on its current version, and that version stops getting security updates within 3 months, or already has. A locked PC can go up to 60 days past that date with no security updates before Windows forces the upgrade. This removes the lock so Windows Update can move to a supported version.",
+      "breaks": "",
+      "source": "https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-update",
+      "presets": ["HighEnd", "MidRange", "Minimal"],
+      "requires": ["Leftover:VersionLockExpiring"],
+      "actions": [
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "TargetReleaseVersion", "delete": true },
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "TargetReleaseVersionInfo", "delete": true },
+        { "type": "Registry", "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "ProductVersion", "delete": true }
+      ]
+    },
+    {
       "id": "fix.priority-separation",
       "name": "Reset Win32PrioritySeparation to the Windows default",
       "tier": "A",

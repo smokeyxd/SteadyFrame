@@ -51,7 +51,7 @@ function Invoke-SFOptimize {
     $runDir = if ($DryRun) { New-SFRunDir '-dryrun' } else { $null }
     $journal = $null
     if (-not $DryRun) {
-        $journal = New-SFJournal -Root (Join-Path (Get-SFRoot) 'runs') -Meta @{ Preset = $Preset; ExternalSource = $ExternalSource; WinUtil = @($WinUtilIds); Win11Debloat = @($W11DFlags); Tweaks = @($Tweaks | ForEach-Object { $_.id }) }
+        $journal = New-SFJournal -Root (Join-Path (Initialize-SFDataRoot) 'runs') -Meta @{ Preset = $Preset; ExternalSource = $ExternalSource; WinUtil = @($WinUtilIds); Win11Debloat = @($W11DFlags); Tweaks = @($Tweaks | ForEach-Object { $_.id }) }
         $runDir = $journal.Dir
     }
     $transcript = $false

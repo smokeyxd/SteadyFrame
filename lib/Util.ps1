@@ -2,6 +2,29 @@ function Get-SFVersion { $script:SFVersion }
 
 function Get-SFRoot { $script:SFRoot }
 
+# Undo journals live here and not next to the script, so deleting the SteadyFrame folder or
+# unzipping a newer version somewhere else doesn't lose the way back.
+function Get-SFDataRoot {
+    if (-not $env:ProgramData) { return (Get-SFRoot) }
+    return (Join-Path $env:ProgramData 'SteadyFrame')
+}
+
+# Admins and SYSTEM can write, users can only read: Revert runs elevated and replays these
+# files, so a normal process must not be able to slip entries into them.
+function Initialize-SFDataRoot {
+    $dir = Get-SFDataRoot
+    $sec = New-Object System.Security.AccessControl.DirectorySecurity
+    $sec.SetAccessRuleProtection($true, $false)
+    $inherit = [System.Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit'
+    foreach ($ace in @(@('S-1-5-32-544', 'FullControl'), @('S-1-5-18', 'FullControl'), @('S-1-5-32-545', 'ReadAndExecute'))) {
+        $sid = New-Object System.Security.Principal.SecurityIdentifier $ace[0]
+        $sec.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule $sid, $ace[1], $inherit, 'None', 'Allow'))
+    }
+    if (-not (Test-Path -LiteralPath $dir)) { [void][System.IO.Directory]::CreateDirectory($dir, $sec) }
+    else { try { [System.IO.Directory]::SetAccessControl($dir, $sec) } catch { } }
+    return $dir
+}
+
 # Most catalog/journal fields are optional; this works on JSON objects and hashtables alike.
 function Get-SFProp {
     param($Object, [string]$Name, $Default = $null)

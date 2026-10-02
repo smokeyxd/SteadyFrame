@@ -58,23 +58,32 @@ function Read-SFJournal {
     }
 }
 
+# Newest first across all roots. 0.1.0 kept journals in the script folder's runs\, so that one is read too.
 function Get-SFJournals {
-    param([Parameter(Mandatory)][string]$Root)
-    if (-not (Test-Path -LiteralPath $Root)) { return @() }
-    $list = foreach ($d in (Get-ChildItem -LiteralPath $Root -Directory | Sort-Object Name -Descending)) {
-        $jp = Join-Path $d.FullName 'journal.json'
-        if (-not (Test-Path -LiteralPath $jp)) { continue }
-        try {
-            $j = Read-SFJournal $jp
-            [pscustomobject]@{
-                Path     = $jp
-                Dir      = $d.FullName
-                Name     = $d.Name
-                Started  = (Get-SFProp $j.Meta 'Started' '')
-                Count    = @($j.Entries).Count
-                Reverted = (Test-Path -LiteralPath (Join-Path $d.FullName 'reverted.json'))
-            }
-        } catch { }
+    param([Parameter(Mandatory)][string[]]$Root)
+    $seen = @{}
+    $list = foreach ($r in $Root) {
+        if (-not (Test-Path -LiteralPath $r)) { continue }
+        foreach ($d in (Get-ChildItem -LiteralPath $r -Directory)) {
+            $jp = Join-Path $d.FullName 'journal.json'
+            if ($seen.ContainsKey($d.Name) -or -not (Test-Path -LiteralPath $jp)) { continue }
+            try {
+                $j = Read-SFJournal $jp
+                $seen[$d.Name] = $true
+                [pscustomobject]@{
+                    Path     = $jp
+                    Dir      = $d.FullName
+                    Name     = $d.Name
+                    Started  = (Get-SFProp $j.Meta 'Started' '')
+                    Count    = @($j.Entries).Count
+                    Reverted = (Test-Path -LiteralPath (Join-Path $d.FullName 'reverted.json'))
+                }
+            } catch { }
+        }
     }
-    return @($list)
+    return @($list | Sort-Object @{ Expression = { $_.Name -replace '^.*_(\d{8}-\d{6}).*$', '$1' } }, Name -Descending)
+}
+
+function Get-SFRunRoots {
+    return @((Join-Path (Get-SFDataRoot) 'runs'), (Join-Path (Get-SFRoot) 'runs'))
 }

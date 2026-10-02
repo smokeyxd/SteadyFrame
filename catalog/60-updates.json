@@ -7,15 +7,15 @@
       "name": "Update policy: defer big feature updates, keep security updates (recommended)",
       "tier": "A",
       "group": "updatePolicy",
-      "why": "Big yearly feature updates are when drivers and settings break. This keeps the current Windows version for up to a year while monthly security updates keep installing. On Home edition (no deferral policy) it pins the current version instead.",
+      "why": "Big yearly feature updates are when drivers and settings break. This waits about 9 months before taking a new Windows version (still well before the old one stops getting security updates), while monthly security updates keep installing. Home edition has no deferral policy, so there it locks the current version instead, but only if that version still has 3+ months of security updates left.",
       "breaks": "",
       "presets": [],
       "actions": [
         { "type": "Registry", "requires": ["!HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "DeferFeatureUpdates", "kind": "DWord", "value": 1 },
-        { "type": "Registry", "requires": ["!HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "DeferFeatureUpdatesPeriodInDays", "kind": "DWord", "value": 365 },
-        { "type": "Registry", "requires": ["HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "TargetReleaseVersion", "kind": "DWord", "value": 1 },
-        { "type": "Registry", "requires": ["HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "ProductVersion", "kind": "String", "value": "{ProductVersion}" },
-        { "type": "Registry", "requires": ["HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "TargetReleaseVersionInfo", "kind": "String", "value": "{DisplayVersion}" }
+        { "type": "Registry", "requires": ["!HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "DeferFeatureUpdatesPeriodInDays", "kind": "DWord", "value": 270 },
+        { "type": "Registry", "requires": ["HomeEdition", "SupportedVersion"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "TargetReleaseVersion", "kind": "DWord", "value": 1 },
+        { "type": "Registry", "requires": ["HomeEdition", "SupportedVersion"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "ProductVersion", "kind": "String", "value": "{ProductVersion}" },
+        { "type": "Registry", "requires": ["HomeEdition", "SupportedVersion"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "TargetReleaseVersionInfo", "kind": "String", "value": "{DisplayVersion}" }
       ]
     },
     {
@@ -23,17 +23,17 @@
       "name": "Update policy: security-focused (Talon style)",
       "tier": "B",
       "group": "updatePolicy",
-      "why": "Feature updates deferred as above, monthly quality updates delayed 4 days (so bad patches get pulled first), and Windows Update stops installing drivers (you manage GPU drivers yourself).",
+      "why": "Feature updates deferred (or locked on Home) as above, monthly quality updates delayed 4 days (so bad patches get pulled first), and Windows Update stops installing drivers (you manage GPU drivers yourself).",
       "breaks": "You must update drivers yourself.",
       "presets": [],
       "actions": [
         { "type": "Registry", "requires": ["!HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "DeferFeatureUpdates", "kind": "DWord", "value": 1 },
-        { "type": "Registry", "requires": ["!HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "DeferFeatureUpdatesPeriodInDays", "kind": "DWord", "value": 365 },
+        { "type": "Registry", "requires": ["!HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "DeferFeatureUpdatesPeriodInDays", "kind": "DWord", "value": 270 },
         { "type": "Registry", "requires": ["!HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "DeferQualityUpdates", "kind": "DWord", "value": 1 },
         { "type": "Registry", "requires": ["!HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "DeferQualityUpdatesPeriodInDays", "kind": "DWord", "value": 4 },
-        { "type": "Registry", "requires": ["HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "TargetReleaseVersion", "kind": "DWord", "value": 1 },
-        { "type": "Registry", "requires": ["HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "ProductVersion", "kind": "String", "value": "{ProductVersion}" },
-        { "type": "Registry", "requires": ["HomeEdition"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "TargetReleaseVersionInfo", "kind": "String", "value": "{DisplayVersion}" },
+        { "type": "Registry", "requires": ["HomeEdition", "SupportedVersion"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "TargetReleaseVersion", "kind": "DWord", "value": 1 },
+        { "type": "Registry", "requires": ["HomeEdition", "SupportedVersion"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "ProductVersion", "kind": "String", "value": "{ProductVersion}" },
+        { "type": "Registry", "requires": ["HomeEdition", "SupportedVersion"], "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "TargetReleaseVersionInfo", "kind": "String", "value": "{DisplayVersion}" },
         { "type": "Registry", "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "ExcludeWUDriversInQualityUpdate", "kind": "DWord", "value": 1 }
       ]
     },

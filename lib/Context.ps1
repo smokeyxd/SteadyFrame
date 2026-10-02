@@ -134,8 +134,42 @@ function ConvertTo-SFBcdBool {
     return 'no'
 }
 
+# Last day of security updates for Home/Pro. Enterprise, Education and LTSC run longer and get $null.
+$script:SFWin11EndOfService = @{
+    '21H2' = '2023-10-10'; '22H2' = '2024-10-08'; '23H2' = '2025-11-11'; '24H2' = '2026-10-13'; '25H2' = '2027-10-12'
+}
+# never lock a Windows version (TargetReleaseVersion) with less support left than this
+$script:SFMinSupportDays = 90
+
+function Get-SFWindowsEndOfService {
+    param([int]$OsMajor, [string]$DisplayVersion, [string]$Edition)
+    if ("$Edition" -notmatch '^(Core|Professional)') { return $null }
+    if ($OsMajor -eq 10) { return [datetime]'2025-10-14' }
+    if ($DisplayVersion -and $script:SFWin11EndOfService.ContainsKey($DisplayVersion)) { return [datetime]$script:SFWin11EndOfService[$DisplayVersion] }
+    # releases newer than the table: H2 versions end on the second Tuesday of October two years later
+    if ($DisplayVersion -match '^(\d\d)H2$') {
+        $d = New-Object DateTime (2002 + [int]$Matches[1]), 10, 1
+        while ($d.DayOfWeek -ne [DayOfWeek]::Tuesday) { $d = $d.AddDays(1) }
+        return $d.AddDays(7)
+    }
+    return $null
+}
+
+function Get-SFSupportDaysLeft {
+    param($EndOfService)
+    if ($null -eq $EndOfService) { return $null }
+    return [int][math]::Floor(([datetime]$EndOfService - (Get-Date).Date).TotalDays)
+}
+
 function Get-SFLeftovers {
+    param($EndOfService)
     $l = [ordered]@{}
+    $wup = 'HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate'
+    $trv = Get-SFRegistryValue $wup 'TargetReleaseVersion'
+    $l.VersionLocked = ($trv.Exists -and [int64]$trv.Value -eq 1)
+    $l.VersionLockTarget = (Get-SFRegistryValue $wup 'TargetReleaseVersionInfo').Value
+    $daysLeft = Get-SFSupportDaysLeft $EndOfService
+    $l.VersionLockExpiring = ($l.VersionLocked -and $null -ne $daysLeft -and $daysLeft -lt $script:SFMinSupportDays)
     $bcd = Get-SFBcdValue 'useplatformclock'
     $l.UsePlatformClock = ($bcd -and (ConvertTo-SFBcdBool $bcd) -eq 'yes')
     $cs = Get-SFSafe { Get-CimInstance Win32_ComputerSystem -ErrorAction Stop }
@@ -195,6 +229,8 @@ function Get-SFContext {
     $exeNames = @(@($GameExe) + @($games | ForEach-Object { $_.ExeName }) | Where-Object { $_ } |
         ForEach-Object { if ($_ -notmatch '\.exe$') { "$_.exe" } else { $_ } } | Sort-Object -Unique)
 
+    $eos = Get-SFWindowsEndOfService -OsMajor $osMajor -DisplayVersion $display -Edition $edition
+
     $suggest = 'HighEnd'
     if ($ram.TotalGB -lt 16 -or $threads -le 8 -or $disk.SystemDisk -eq 'HDD') { $suggest = 'MidRange' }
 
@@ -208,6 +244,7 @@ function Get-SFContext {
         ProductVersion  = ('Windows {0}' -f $osMajor)
         Edition         = $edition
         IsHome          = ($edition -match '^Core')
+        EndOfService    = $eos
         FormFactor      = if ($isLaptop) { 'Laptop' } else { 'Desktop' }
         CpuName         = $cpuName
         CpuCores        = $cores
@@ -229,7 +266,7 @@ function Get-SFContext {
         Games           = $games
         GameExes        = $exeNames
         NoGamePass      = [bool]$NoGamePass
-        Leftovers       = (Get-SFLeftovers)
+        Leftovers       = (Get-SFLeftovers -EndOfService $eos)
         SuggestedPreset = $suggest
     }
 }
@@ -247,6 +284,7 @@ function Test-SFRequirement {
         '^Laptop$' { $Context.FormFactor -eq 'Laptop'; break }
         '^DualCcdX3D$' { [bool]$Context.IsDualCcdX3D; break }
         '^HomeEdition$' { [bool]$Context.IsHome; break }
+        '^SupportedVersion$' { $d = Get-SFSupportDaysLeft (Get-SFProp $Context 'EndOfService'); ($null -ne $d -and $d -ge $script:SFMinSupportDays); break }
         '^SsdOnly$' { [bool]$Context.Disk.SsdOnly; break }
         '^Printer$' { [bool]$Context.HasPrinter; break }
         '^GamePass$' { -not [bool]$Context.NoGamePass; break }
@@ -269,6 +307,7 @@ $script:SFRequirementHelp = @{
     '!DualCcdX3D' = 'skipped on dual-CCD X3D CPUs (AMD V-Cache driver needs Balanced plan + Game Bar)'
     'DualCcdX3D' = 'dual-CCD X3D CPUs only'
     'HomeEdition' = 'Windows Home only'; '!HomeEdition' = 'Windows Pro/Education/Enterprise only'
+    'SupportedVersion' = 'only when this Windows version still has 3+ months of security updates left'
     'SsdOnly' = 'only when every drive is an SSD'; '!Printer' = 'only when no physical printer is installed'
     '!GamePass' = 'only if you said this PC does not use Game Pass / Xbox app'
     'Ram16Plus' = 'needs 16 GB RAM or more'; '!BitLocker' = 'needs BitLocker off/suspended (boot setting change)'

@@ -20,7 +20,7 @@ function Invoke-SFRevert {
 
 function Show-SFRevertMenu {
     param([switch]$DryRun)
-    $runs = @(Get-SFJournals (Join-Path (Get-SFRoot) 'runs') | Where-Object { $_.Count -gt 0 })
+    $runs = @(Get-SFJournals (Get-SFRunRoots) | Where-Object { $_.Count -gt 0 })
     if ($runs.Count -eq 0) { Write-SFStatus 'INFO' 'No SteadyFrame runs with changes found on this PC.'; return }
     Write-SFHeader 'Undo a previous run'
     for ($i = 0; $i -lt $runs.Count; $i++) {

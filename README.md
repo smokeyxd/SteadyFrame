@@ -14,7 +14,8 @@ Everything it changes is shown to you first, and the changes can be undone.
 
 ## How to use it
 
-1. Download or copy the whole `SteadyFrame` folder. Keep the files together.
+1. Download the zip and extract it (right-click, *Extract All*). Running it from inside the zip
+   doesn't work. Keep the files together.
 2. Double-click **`HealthCheck.bat`**. This only looks, it changes nothing. At the end it lists
    things to fix outside Windows, for example turning on XMP/EXPO in the BIOS.
 3. (Optional) Record a benchmark in your main game first. See [Checking the results](#checking-the-results).
@@ -61,8 +62,12 @@ The changes, grouped the same way as in the menu:
   Edge and Chrome stop running after you close them, telemetry services and tasks off, Windows
   Update stops uploading to other PCs, and Windows stops turning your game down during voice calls
 - Network: power saving on the network adapter off
-- Windows Update: big yearly updates are postponed, security updates keep installing, and no
-  automatic restarts while you're signed in
+- Windows Update: big yearly updates wait about 9 months, security updates keep installing, and no
+  automatic restarts while you're signed in. Windows Home can't postpone updates, so there it locks
+  the current Windows version instead, but only if that version still gets security updates for 3+
+  months. Run SteadyFrame again a few months before that date (the health check shows it) and it
+  offers to unlock it. A locked version that runs out of support goes without security updates
+  until Windows forces the upgrade, up to 60 days later.
 - Debloat and privacy: runs [WinUtil](https://github.com/ChrisTitusTech/winutil) by Chris Titus Tech
   and [Win11Debloat](https://github.com/Raphire/Win11Debloat) by Raphire with a fixed list of options
   (removes preinstalled apps like Candy Crush and Clipchamp, turns off ads, tips, Copilot and telemetry)
@@ -168,10 +173,12 @@ changes and skips the debloat tools.
 
 ## Where things are saved
 
-Each run gets a folder in `runs\` with the list of changes (used by `Revert.bat`), a log, the health
-check report and the game settings cards. Downloaded copies of WinUtil and Win11Debloat go in
-`tools\cache\`. SteadyFrame keeps its files inside its own folder; WinUtil and Win11Debloat may keep
-their own logs as well.
+Each run that changes something gets a folder in `C:\ProgramData\SteadyFrame\runs\` with the list
+of changes (used by `Revert.bat`), a log and a summary. It's kept outside the SteadyFrame folder so
+you can still undo after deleting that folder or downloading a newer version. Only administrators can
+change those files. Health checks, dry runs and game settings cards go in `runs\` inside the
+SteadyFrame folder. Downloaded copies of WinUtil and Win11Debloat go in `tools\cache\`. WinUtil and
+Win11Debloat may keep their own logs as well.
 
 ## Command line
 

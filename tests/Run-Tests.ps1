@@ -28,14 +28,14 @@ function New-FakeContext {
     param([hashtable]$Over = @{})
     $c = [ordered]@{
         Computer = 'TEST'; IsAdmin = $true; OsMajor = 11; Build = 26100; UBR = 1; DisplayVersion = '24H2'; ProductVersion = 'Windows 11'
-        Edition = 'Professional'; IsHome = $false; FormFactor = 'Desktop'; CpuName = 'AMD Ryzen 7 9800X3D'; CpuCores = 8; CpuThreads = 16
+        Edition = 'Professional'; IsHome = $false; EndOfService = (Get-Date).Date.AddDays(400); FormFactor = 'Desktop'; CpuName = 'AMD Ryzen 7 9800X3D'; CpuCores = 8; CpuThreads = 16
         IsAmd = $true; IsIntel = $false; IsDualCcdX3D = $false; IsX3D = $true; IsIntelRaptor = $false; Microcode = $null
         Gpus = @('NVIDIA GeForce RTX 5070 Ti'); HasNvidia = $true; GpuPnpIds = @('PCI\VEN_10DE&DEV_2C05&SUBSYS_00000000&REV_A1\4&1')
         Ram = [pscustomobject]@{ TotalGB = 32; TotalKB = 33554432; Sticks = 2; Type = 'DDR5'; SpeedMTs = 6000; MixedSizes = $false }
         Disk = [pscustomobject]@{ SystemDisk = 'NVMe SSD'; SsdOnly = $true; FreeGB = 500; SizeGB = 1000 }
         HasPrinter = $false; BitLockerOn = $false; ActiveInterfaces = @('{11111111-2222-3333-4444-555555555555}')
         GameExes = @(); Games = @(); NoGamePass = $false
-        Leftovers = [pscustomobject]@{ UsePlatformClock = $false; PagefileDisabled = $false; SpectreMitigationsDisabled = $false; LargeSystemCache = $false; WuauservDisabled = $false; BitsDisabled = $false; UpdateServicesDisabled = $false; PrioritySeparationOdd = $false; DefenderDisabledByPolicy = $false }
+        Leftovers = [pscustomobject]@{ UsePlatformClock = $false; PagefileDisabled = $false; SpectreMitigationsDisabled = $false; LargeSystemCache = $false; WuauservDisabled = $false; BitsDisabled = $false; UpdateServicesDisabled = $false; PrioritySeparationOdd = $false; DefenderDisabledByPolicy = $false; VersionLocked = $false; VersionLockTarget = $null; VersionLockExpiring = $false }
         SuggestedPreset = 'HighEnd'
     }
     foreach ($k in $Over.Keys) { $c[$k] = $Over[$k] }
@@ -333,6 +333,46 @@ It 'Home edition pins the version instead of using Pro-only deferral' {
     Assert-True ($homeNames -notcontains 'DeferFeatureUpdates') 'home skips deferral'
     Assert-True ($proNames -contains 'DeferFeatureUpdates') 'pro defers'
     Assert-True ($proNames -notcontains 'TargetReleaseVersionInfo') 'pro does not pin'
+    $soon = @(Get-ActiveNames (New-FakeContext @{ IsHome = $true; Edition = 'Core'; EndOfService = (Get-Date).Date.AddDays(11) }))
+    $unknown = @(Get-ActiveNames (New-FakeContext @{ IsHome = $true; Edition = 'Core'; EndOfService = $null }))
+    Assert-True ($soon -notcontains 'TargetReleaseVersionInfo') 'no pin 11 days before end of support'
+    Assert-True ($unknown -notcontains 'TargetReleaseVersionInfo') 'no pin when the date is unknown'
+}
+
+It 'Pro deferral stays shorter than the gap between Windows versions' {
+    foreach ($id in @('updates.defer-feature', 'updates.security-only')) {
+        $a = ($catalog | Where-Object id -eq $id).actions | Where-Object { $_.name -eq 'DeferFeatureUpdatesPeriodInDays' }
+        Assert-True ([int]$a.value -le 300) "$id defers $($a.value) days"
+    }
+}
+
+It 'knows when Home/Pro versions stop getting security updates' {
+    Assert-Equal '2026-10-13' ('{0:yyyy-MM-dd}' -f (Get-SFWindowsEndOfService 11 '24H2' 'Core'))
+    Assert-Equal '2027-10-12' ('{0:yyyy-MM-dd}' -f (Get-SFWindowsEndOfService 11 '25H2' 'Professional'))
+    Assert-Equal '2025-11-11' ('{0:yyyy-MM-dd}' -f (Get-SFWindowsEndOfService 11 '23H2' 'CoreSingleLanguage'))
+    Assert-Equal '2029-10-09' ('{0:yyyy-MM-dd}' -f (Get-SFWindowsEndOfService 11 '27H2' 'Core')) 'future H2 versions follow the pattern'
+    Assert-Equal '2025-10-14' ('{0:yyyy-MM-dd}' -f (Get-SFWindowsEndOfService 10 '22H2' 'Core'))
+    Assert-Null (Get-SFWindowsEndOfService 11 '24H2' 'Enterprise') 'other lifecycle'
+    Assert-Null (Get-SFWindowsEndOfService 11 '26H1' 'Core') 'unknown release'
+    Assert-Null (Get-SFWindowsEndOfService 11 $null 'Core')
+}
+
+It 'SupportedVersion needs 90+ days of known support' {
+    Assert-True (Test-SFRequirement 'SupportedVersion' (New-FakeContext @{ EndOfService = (Get-Date).Date.AddDays(90) }))
+    Assert-True (-not (Test-SFRequirement 'SupportedVersion' (New-FakeContext @{ EndOfService = (Get-Date).Date.AddDays(89) })))
+    Assert-True (-not (Test-SFRequirement 'SupportedVersion' (New-FakeContext @{ EndOfService = (Get-Date).Date.AddDays(-5) })))
+    Assert-True (-not (Test-SFRequirement 'SupportedVersion' (New-FakeContext @{ EndOfService = $null })))
+}
+
+It 'an expiring version lock is removed in every preset, a healthy one is left alone' {
+    $lo = (New-FakeContext).Leftovers; $lo.VersionLocked = $true; $lo.VersionLockExpiring = $true
+    foreach ($p in @('HighEnd', 'MidRange', 'Minimal')) {
+        $row = (Resolve-SFSelection -Catalog $catalog -Context (New-FakeContext @{ Leftovers = $lo }) -Preset $p) | Where-Object Id -eq 'fix.version-lock'
+        Assert-True ($row.Applies -and $row.Selected) $p
+    }
+    $ok = (New-FakeContext).Leftovers; $ok.VersionLocked = $true
+    $row = (Resolve-SFSelection -Catalog $catalog -Context (New-FakeContext @{ Leftovers = $ok }) -Preset 'HighEnd') | Where-Object Id -eq 'fix.version-lock'
+    Assert-True (-not $row.Applies -and -not $row.Visible)
 }
 
 It 'unknown BitLocker state blocks boot-setting tweaks (safe side)' {
@@ -573,6 +613,21 @@ It 'startup "disabled" blob is the Task Manager format (03 + FILETIME)' {
     $b = ConvertFrom-SFHex (New-SFStartupDisabledBlob)
     Assert-Equal 12 $b.Length
     Assert-Equal 3 $b[0]
+}
+
+It 'Revert lists journals from the new and the old location, newest first, no duplicates' {
+    $base = Join-Path $env:TEMP ('sf-roots-' + [guid]::NewGuid().ToString('N'))
+    $newRoot = Join-Path $base 'programdata'
+    $oldRoot = Join-Path $base 'scriptfolder'
+    foreach ($x in @(@($newRoot, 'PC_20261002-120000'), @($oldRoot, 'PC_20261001-090000'), @($oldRoot, 'PC_20261002-120000'), @($oldRoot, 'PC_20261001-100000-health'))) {
+        $d = Join-Path $x[0] $x[1]
+        New-Item -ItemType Directory -Path $d -Force | Out-Null
+        if ($x[1] -notlike '*-health') { Save-SFJson -Object ([ordered]@{ Format = 1; Meta = @{ Started = $x[1] }; Entries = @() }) -Path (Join-Path $d 'journal.json') }
+    }
+    $list = @(Get-SFJournals @($newRoot, $oldRoot, (Join-Path $base 'missing')))
+    Assert-Equal 'PC_20261002-120000,PC_20261001-090000' (($list | ForEach-Object { $_.Name }) -join ',')
+    Assert-True ($list[0].Dir -like "$newRoot*") 'the new location wins'
+    Remove-Item -LiteralPath $base -Recurse -Force
 }
 
 It 'number list parser handles ranges, commas and junk' {

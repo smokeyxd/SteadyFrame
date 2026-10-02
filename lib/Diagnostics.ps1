@@ -130,6 +130,19 @@ function Get-SFDiagnostics {
     $add = { param($x) [void]$f.Add($x) }
 
     & $add (New-SFFinding 'Windows' 'Version' ("Windows {0} {1} {2} (build {3}.{4})" -f $Context.OsMajor, $Context.Edition, $Context.DisplayVersion, $Context.Build, $Context.UBR) 'INFO')
+    $days = Get-SFSupportDaysLeft (Get-SFProp $Context 'EndOfService')
+    if ($null -ne $days) {
+        $eos = '{0:yyyy-MM-dd}' -f $Context.EndOfService
+        if ($days -lt 0) {
+            $advice = if ($Context.OsMajor -eq 10) { 'Windows 10 no longer gets security updates. Extended Security Updates (if you enrolled) only last until 2026-10-13. Upgrade to Windows 11 if this PC supports it.' }
+            else { 'This Windows version no longer gets security updates. Install the newest version in Settings > Windows Update.' }
+            & $add (New-SFFinding 'Windows' 'Security updates' ('ended ' + $eos) 'BAD' $advice)
+        } elseif ($days -lt $script:SFMinSupportDays) {
+            & $add (New-SFFinding 'Windows' 'Security updates' ('until {0} ({1} days left)' -f $eos, $days) 'WARN' 'Install the newest Windows version soon (Settings > Windows Update). SteadyFrame will not lock this version.')
+        } else {
+            & $add (New-SFFinding 'Windows' 'Security updates' ('until ' + $eos) 'OK')
+        }
+    }
     & $add (New-SFFinding 'Windows' 'Form factor' $Context.FormFactor 'INFO')
     if (-not $Context.IsAdmin) { & $add (New-SFFinding 'Windows' 'Admin' 'not elevated' 'WARN' 'Run as administrator for the full check (TPM, BitLocker, boot settings).') }
     $elevUser = [Security.Principal.WindowsIdentity]::GetCurrent().Name
@@ -271,6 +284,8 @@ function Get-SFDiagnostics {
     if ($l.SpectreMitigationsDisabled) { & $add (New-SFFinding 'Leftovers' 'CPU security mitigations' 'disabled' 'BAD' 'Security hole; the optimizer restores Windows defaults.') }
     if ($l.LargeSystemCache) { & $add (New-SFFinding 'Leftovers' 'LargeSystemCache' '1 (server mode)' 'WARN' 'The optimizer resets it to the desktop default.') }
     if ($l.UpdateServicesDisabled) { & $add (New-SFFinding 'Leftovers' 'Windows Update / BITS' 'disabled' 'BAD' 'No security updates; anti-cheats may refuse old builds. The optimizer re-enables them.') }
+    if ($l.VersionLockExpiring) { & $add (New-SFFinding 'Leftovers' 'Windows version lock' ("locked to $($l.VersionLockTarget)") 'BAD' 'This version stops getting security updates soon (or already has). The optimizer removes the lock.') }
+    elseif ($l.VersionLocked) { & $add (New-SFFinding 'Leftovers' 'Windows version lock' ("locked to $($l.VersionLockTarget)") 'INFO' 'Fine while this version is supported. Run SteadyFrame again a few months before support ends; it will offer to unlock it.') }
     if ($l.PrioritySeparationOdd) { & $add (New-SFFinding 'Leftovers' 'Win32PrioritySeparation' ('0x{0:X}' -f $l.PrioritySeparationValue) 'WARN' 'Non-default value from a tweak tool. The optimizer can reset it.') }
     if ($l.DefenderDisabledByPolicy) { & $add (New-SFFinding 'Leftovers' 'Defender disabled by policy' 'yes' 'BAD' 'A policy disables Microsoft Defender. SteadyFrame never touches Defender; remove that policy yourself (or with the tool that set it) unless another antivirus is installed.') }
 

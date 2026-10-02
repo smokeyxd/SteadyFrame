@@ -68,7 +68,7 @@ function Test-SFCatalog {
 function Test-SFRequirementName {
     param([string]$Id, [string]$Name)
     $n = $Name.TrimStart('!')
-    $known = '^(Win10|Win11|MinBuild:\d+|Desktop|Laptop|DualCcdX3D|HomeEdition|SsdOnly|Printer|GamePass|Ram16Plus|BitLocker|GameExe|GameDetected|Game:[\w-]+|Nvidia|Leftover:\w+)$'
+    $known = '^(Win10|Win11|MinBuild:\d+|Desktop|Laptop|DualCcdX3D|HomeEdition|SupportedVersion|SsdOnly|Printer|GamePass|Ram16Plus|BitLocker|GameExe|GameDetected|Game:[\w-]+|Nvidia|Leftover:\w+)$'
     if ($n -notmatch $known) { return "$Id unknown requirement '$Name'" }
     return $null
 }

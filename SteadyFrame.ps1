@@ -214,6 +214,17 @@ function Start-Optimize {
         Write-Host '  Things that may stop working:' -ForegroundColor Yellow
         foreach ($b in $breaks) { Write-Host ('   - ' + $b) -ForegroundColor Yellow }
     }
+    $locking = @($tweaks | Where-Object { (Get-SFProp $_ 'group') -eq 'updatePolicy' -and $_.id -ne 'updates.leave' }).Count -gt 0
+    if ($locking -and $ctx.IsHome) {
+        Write-Host ''
+        if (Test-SFRequirement 'SupportedVersion' $ctx) {
+            Write-Host ('  Windows Home: version {0} gets locked. It has security updates until {1:yyyy-MM-dd}.' -f $ctx.DisplayVersion, $ctx.EndOfService) -ForegroundColor Yellow
+            Write-Host '  Run SteadyFrame again a few months before that date and it will offer to unlock it.' -ForegroundColor Yellow
+        } else {
+            Write-Host ('  Windows Home: version {0} will NOT be locked, it stops getting security updates soon.' -f $ctx.DisplayVersion) -ForegroundColor Yellow
+            Write-Host '  Install the newest version in Settings > Windows Update first.' -ForegroundColor Yellow
+        }
+    }
     $tierC = @($tweaks | Where-Object { $_.tier -eq 'C' })
     if ($tierC.Count -gt 0) {
         Write-Host ''
@@ -288,7 +299,12 @@ while ($true) {
         '^2$' { Start-Optimize $ctx.SuggestedPreset; [void](Read-SFInput '  Enter to go back...') }
         '^3$' { Start-Optimize $other; [void](Read-SFInput '  Enter to go back...') }
         '^4$' { Start-Optimize 'Minimal'; [void](Read-SFInput '  Enter to go back...') }
-        '^5$' { $opts.ShowAll = $true; Start-Optimize 'Custom'; [void](Read-SFInput '  Enter to go back...') }
+        '^5$' {
+            $showAll = $opts.ShowAll
+            $opts.ShowAll = $true
+            try { Start-Optimize 'Custom' } finally { $opts.ShowAll = $showAll }
+            [void](Read-SFInput '  Enter to go back...')
+        }
         '^6$' { Show-SFRevertMenu -DryRun:$opts.DryRun; [void](Read-SFInput '  Enter to go back...') }
         '^7$' {
             Write-SFGameCards -Context $ctx

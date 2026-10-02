@@ -297,9 +297,12 @@ function Invoke-SFPowerSettingAction {
     & powercfg.exe /setacvalueindex $scheme $sub $set $ac 2>&1 | Out-Null
     & powercfg.exe /setdcvalueindex $scheme $sub $set $dc 2>&1 | Out-Null
     & powercfg.exe /setactive $scheme 2>&1 | Out-Null
+    # journal before checking, so a half-applied setting (AC but not DC) can still be undone
     if ($Journal) {
         Add-SFJournalEntry $Journal $TweakId 'PowerSetting' ([ordered]@{ Scheme = $scheme; Subgroup = $sub; Setting = $set; Label = $label }) ([ordered]@{ AC = $cur.AC; DC = $cur.DC }) ([ordered]@{ AC = $ac; DC = $dc })
     }
+    $now = Get-SFPowerSettingValue $scheme $sub $set
+    if ($null -eq $now -or $now.AC -ne $ac -or $now.DC -ne $dc) { throw "powercfg did not apply $label" }
     return (New-SFResult $TweakId 'PowerSetting' $label 'Applied' '' $beforeText $afterText)
 }
 
@@ -446,7 +449,10 @@ function Undo-SFJournalEntry {
             'PowerScheme' {
                 $prev = Get-SFProp $b 'Scheme'
                 if ($DryRun) { return (New-SFResult $id 'PowerScheme' $prev 'DryRun' 'would reactivate previous plan') }
-                if ($prev) { & powercfg.exe /setactive $prev 2>&1 | Out-Null }
+                if ($prev) {
+                    & powercfg.exe /setactive $prev 2>&1 | Out-Null
+                    if ($LASTEXITCODE -ne 0) { throw "powercfg could not reactivate $prev" }
+                }
                 if ([bool](Get-SFProp $a 'Created' $false)) { & powercfg.exe /delete (Get-SFProp $a 'Scheme') 2>&1 | Out-Null }
                 return (New-SFResult $id 'PowerScheme' $prev 'Applied' 'previous plan reactivated')
             }
@@ -455,7 +461,10 @@ function Undo-SFJournalEntry {
                 $label = Get-SFProp $t 'Label'
                 if ($DryRun) { return (New-SFResult $id 'PowerSetting' $label 'DryRun' 'would restore') }
                 & powercfg.exe /setacvalueindex $scheme (Get-SFProp $t 'Subgroup') (Get-SFProp $t 'Setting') ([int64](Get-SFProp $b 'AC')) 2>&1 | Out-Null
+                $acExit = $LASTEXITCODE
                 & powercfg.exe /setdcvalueindex $scheme (Get-SFProp $t 'Subgroup') (Get-SFProp $t 'Setting') ([int64](Get-SFProp $b 'DC')) 2>&1 | Out-Null
+                # fails when the plan no longer exists, e.g. this run was already undone once
+                if ($acExit -ne 0 -or $LASTEXITCODE -ne 0) { throw "powercfg could not restore $label (exit $acExit/$LASTEXITCODE)" }
                 if ((Get-SFActivePowerScheme) -eq $scheme) { & powercfg.exe /setactive $scheme 2>&1 | Out-Null }
                 return (New-SFResult $id 'PowerSetting' $label 'Applied' 'restored')
             }
@@ -463,6 +472,7 @@ function Undo-SFJournalEntry {
                 $en = [bool](Get-SFProp $b 'Enabled')
                 if ($DryRun) { return (New-SFResult $id 'Hibernate' 'hibernation' 'DryRun' "would set $en") }
                 & powercfg.exe /hibernate $(if ($en) { 'on' } else { 'off' }) 2>&1 | Out-Null
+                if ($LASTEXITCODE -ne 0) { throw "powercfg /hibernate failed (exit $LASTEXITCODE)" }
                 return (New-SFResult $id 'Hibernate' 'hibernation' 'Applied' 'restored')
             }
             'Bcd' {
