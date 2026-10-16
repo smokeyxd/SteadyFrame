@@ -38,6 +38,7 @@ $script:SFGuardValueRules = @(
     @{ Name = 'MitigationAuditOptions'; Mode = 'Block' }
     @{ Name = 'MoveImages'; Mode = 'Block' }
     @{ Name = 'DisableExceptionChainValidation'; Mode = 'Block' }
+    @{ Name = 'KernelSEHOPEnabled'; Mode = 'Block' }
     @{ Name = 'Debugger'; Mode = 'Block' }
     @{ Name = 'GlobalFlag'; Mode = 'Block' }
     @{ Name = 'DisableRawSecurity'; Mode = 'Block' }

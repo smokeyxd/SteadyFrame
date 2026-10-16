@@ -109,7 +109,7 @@ and others) keep working and the PC stays protected:
 
 - Windows Defender protection (real-time, tamper protection, cloud protection)
 - Memory integrity / VBS, Secure Boot, TPM, anti-cheat services
-- UAC, SmartScreen, the firewall, CPU security fixes (Spectre/Meltdown)
+- UAC, SmartScreen, the firewall, CPU security fixes (Spectre/Meltdown), exploit protection (SEHOP)
 - Windows Update can be postponed, but never turned off
 
 After every run it checks these again and warns you if anything changed.

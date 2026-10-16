@@ -186,6 +186,8 @@ It 'blocks Defender, VBS/HVCI, LSA, firewall and UAC keys in any path form' {
     Assert-NotNull (Test-SFRegistryWrite 'hklm:\system\currentcontrolset\control\lsa' 'RunAsPPL' 0)
     Assert-NotNull (Test-SFRegistryWrite 'HKLM\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile' 'EnableFirewall' 0)
     Assert-NotNull (Test-SFRegistryWrite 'HKLM\SOFTWARE\Something\Else' 'EnableLUA' 0) 'EnableLUA anywhere'
+    Assert-NotNull (Test-SFRegistryWrite 'HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\kernel' 'KernelSEHOPEnabled' 0) 'SEHOP exploit protection'
+    Assert-NotNull (Test-SFRegistryWrite 'HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\kernel' 'KernelSEHOPEnabled' -Delete) 'SEHOP can not be deleted either'
     Assert-NotNull (Test-SFRegistryWrite 'HKLM\SYSTEM\CurrentControlSet\Services\WinDefend' 'Start' 4) 'service keys'
 }
 

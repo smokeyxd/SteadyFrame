@@ -143,13 +143,17 @@
     },
     {
       "id": "bg.sysmain-off",
-      "name": "Disable SysMain (Superfetch) on SSD-only PCs",
+      "name": "Disable SysMain (Superfetch) and Prefetch on SSD-only PCs",
       "tier": "B",
-      "why": "SysMain preloads apps into RAM. On SSD-only PCs the benefit is small and it can cause disk activity spikes. Keep it on PCs with a hard drive.",
-      "breaks": "Apps may open slightly slower the first time.",
+      "why": "SysMain preloads apps into RAM, and Prefetch records how apps start so they can be preloaded. On SSD-only PCs the benefit is small and both cause background disk and CPU activity. Keep them on PCs with a hard drive.",
+      "breaks": "Apps may open slightly slower the first time. Memory compression stops too, because SysMain runs it: if a game fills your RAM, Windows uses the page file sooner.",
       "presets": [],
       "requires": ["SsdOnly"],
-      "actions": [ { "type": "Service", "name": "SysMain", "startType": "Disabled" } ]
+      "actions": [
+        { "type": "Service", "name": "SysMain", "startType": "Disabled" },
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management\\PrefetchParameters", "name": "EnablePrefetcher", "kind": "DWord", "value": 0 },
+        { "type": "Registry", "path": "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management\\PrefetchParameters", "name": "EnableSuperfetch", "kind": "DWord", "value": 0 }
+      ]
     }
   ]
 }
