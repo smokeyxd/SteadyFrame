@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.release.tag_name || github.ref_name }}
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version and tag
+        shell: bash
+        run: |
+          version=$(sed -n "s/.*SFVersion = '\([^']*\)'.*/\1/p" lib/SteadyFrame.psm1)
+          [ -n "$version" ] || { echo "no SFVersion in lib/SteadyFrame.psm1"; exit 1; }
+          tag="${{ github.event.release.tag_name }}"
+          if [ -z "$tag" ] && [ "${{ github.ref_type }}" = "tag" ]; then tag="${{ github.ref_name }}"; fi
+          if [ -n "$tag" ] && [ "$tag" != "v$version" ]; then
+            echo "tag $tag does not match SteadyFrame version $version"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+      - name: Tests
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File tests\Run-Tests.ps1
+      - name: Build the zip
+        shell: bash
+        run: git archive --format=zip --prefix=SteadyFrame/ -o "SteadyFrame-$VERSION.zip" HEAD
+      - name: Check the zip
+        shell: powershell
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP 'zipcheck'
+          Expand-Archive "SteadyFrame-$env:VERSION.zip" $dir -Force
+          $root = Join-Path $dir 'SteadyFrame'
+          foreach ($f in 'Run.bat', 'SteadyFrame.ps1', 'lib\SteadyFrame.psm1', 'How to use.txt', 'LICENSE') {
+            if (-not (Test-Path (Join-Path $root $f))) { throw "missing from the zip: $f" }
+          }
+          foreach ($f in 'tests', 'tools', '.github', '.gitattributes', '.gitignore') {
+            if (Test-Path (Join-Path $root $f)) { throw "should not be in the zip: $f" }
+          }
+          # cmd can mis-jump to labels in LF-only .bat files
+          if ([IO.File]::ReadAllText((Join-Path $root 'Run.bat')) -match "(?<!`r)`n") { throw 'Run.bat lost its CRLF line endings' }
+          (Get-FileHash "SteadyFrame-$env:VERSION.zip" -Algorithm SHA256).Hash.ToLower() | Out-File sha256.txt -Encoding ascii
+      - name: Publish
+        if: env.TAG != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          zip="SteadyFrame-$VERSION.zip"
+          sha=$(tr -d '\r\n' < sha256.txt)
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "$zip" --clobber
+          else
+            git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
+            git tag -l --format='%(contents)' "$TAG" > notes.md
+            printf '\nSHA256 of the zip: `%s`\n' "$sha" >> notes.md
+            gh release create "$TAG" "$zip" --title "SteadyFrame $VERSION" --notes-file notes.md --verify-tag
+          fi
+      - name: Keep the zip (manual runs build it without publishing)
+        if: env.TAG == ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: SteadyFrame-${{ env.VERSION }}
+          path: SteadyFrame-${{ env.VERSION }}.zip

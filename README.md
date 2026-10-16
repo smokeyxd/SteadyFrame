@@ -242,6 +242,12 @@ To update WinUtil or Win11Debloat, read what changed in the new release, run
 To add a game, add it to `games\games.json`. Only put settings on its card that have testing or the
 developer behind them, with a source.
 
+To release a version, change `$script:SFVersion` in `lib\SteadyFrame.psm1`, commit, then push an
+annotated tag such as `v0.1.3` whose message is the release notes. Start the notes with what
+changed: the update prompt inside SteadyFrame shows their first lines. GitHub Actions then runs the
+tests, builds `SteadyFrame-<version>.zip` and publishes the release. A release created on the GitHub
+website with a new tag also gets the zip attached automatically.
+
 ## Known limits
 
 - Changes made by WinUtil and Win11Debloat, and removed apps, aren't in SteadyFrame's undo list. The
