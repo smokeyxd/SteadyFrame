@@ -628,7 +628,8 @@ It 'Revert lists journals from the new and the old location, newest first, no du
     }
     $list = @(Get-SFJournals @($newRoot, $oldRoot, (Join-Path $base 'missing')))
     Assert-Equal 'PC_20261002-120000,PC_20261001-090000' (($list | ForEach-Object { $_.Name }) -join ',')
-    Assert-True ($list[0].Dir -like "$newRoot*") 'the new location wins'
+    # by folder name: TEMP can be an 8.3 short path (RUNNER~1) while listings return long names
+    Assert-Equal 'programdata' (Split-Path (Split-Path $list[0].Dir -Parent) -Leaf) 'the new location wins'
     Remove-Item -LiteralPath $base -Recurse -Force
 }
 
