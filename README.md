@@ -116,12 +116,13 @@ After every run it checks these again and warns you if anything changed.
 
 ### What it downloads
 
-Only WinUtil and Win11Debloat, from their official GitHub releases. By default it uses specific
+WinUtil and Win11Debloat, from their official GitHub releases, and Intel's PresentMon if you use
+Measure FPS. By default it uses specific
 versions that were read through before being added, and checks each download's SHA256 fingerprint
 before running it. If the fingerprint doesn't match, the file is deleted and not run.
 
 SteadyFrame itself doesn't send any data anywhere. It only connects to GitHub: to download those two
-tools, and when the menu opens, to ask for the latest SteadyFrame version number. If you don't want the
+tools (and PresentMon), and when the menu opens, to ask for the latest SteadyFrame version number. If you don't want the
 tools at all, open Advanced (type `adv` in the main menu) and set the source to *None*. With
 `-Prefetch` you can download them once and then use the folder on PCs without internet.
 
@@ -156,11 +157,24 @@ overwrite them, and Bandai Namco bans TEKKEN 8 accounts for modified game files.
 Average FPS doesn't tell you much about stutter. The useful numbers are the 1% low and the 0.1% low,
 which show the frame rate during the worst moments.
 
-1. Install [CapFrameX](https://www.capframex.com/) (free, open source) or Intel PresentMon.
-2. Pick a repeatable test: a replay, a benchmark mode, or the same route in the same map.
-3. Record 3 runs of 60 to 90 seconds before running SteadyFrame.
-4. Run SteadyFrame, restart, then record 3 runs again.
-5. Compare the 1% and 0.1% lows.
+SteadyFrame can measure this for you: option **9 (Measure FPS before / after)** records a minute of
+your game with Intel's PresentMon and keeps a table of every run, so you can see what a change did.
+
+1. Pick a repeatable test: a replay, a benchmark mode, or the same route in the same map.
+2. Open the game, choose option 9, name the run "before", and play that test when the countdown ends.
+3. Run SteadyFrame, restart, then measure again and name it "after".
+4. Compare the 1% and 0.1% lows. A few % up or down between runs is normal noise.
+
+"1% low" here means the frame rate that 99% of frames beat. [CapFrameX](https://www.capframex.com/)
+gives more detailed graphs if you want them.
+
+### Is something slowing your game right now?
+
+Option **8 (What's slowing my game?)** checks what's going on while you play. Start it, switch to the
+game, and play until it beeps. It shows which programs used CPU next to the game (overlays, streams,
+browsers), whether you were running out of memory, whether the graphics card was waiting on the CPU,
+and whether the game is going through the Windows desktop compositor. It only looks; it changes
+nothing. After it, and after a health check, press `c` to copy a short summary to paste in Discord.
 
 If a specific setting makes things worse on your PC, undo just that one with `Revert.bat`.
 
@@ -205,6 +219,8 @@ For people who prefer it, or for scripting:
 .\SteadyFrame.ps1 -Prefetch                          # download the two tools now, for offline use later
 .\SteadyFrame.ps1 -ListTweaks -Json                  # every setting and whether it applies, as JSON
 .\SteadyFrame.ps1 -NoUpdateCheck                     # don't ask GitHub for the latest version
+.\SteadyFrame.ps1 -LiveCheck                         # what's slowing my game (run while playing)
+.\SteadyFrame.ps1 -Benchmark                         # measure FPS before / after
 ```
 
 ## For contributors

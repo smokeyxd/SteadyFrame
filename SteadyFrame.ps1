@@ -39,7 +39,9 @@ param(
     [switch]$Prefetch,
     [switch]$Revert,
     [switch]$GameCards,
-    [switch]$NoUpdateCheck
+    [switch]$NoUpdateCheck,
+    [switch]$LiveCheck,
+    [switch]$Benchmark
 )
 
 Import-Module (Join-Path $PSScriptRoot 'lib\SteadyFrame.psm1') -Force -DisableNameChecking
@@ -107,6 +109,15 @@ function Invoke-HealthCheck {
         Write-Host ('  Report saved: ' + $dir) -ForegroundColor DarkGray
     }
     return $findings
+}
+
+function Invoke-LiveCheck {
+    $findings = Invoke-SFLiveCheck -Context $ctx
+    $dir = New-SFRunDir '-live'
+    Save-SFDiagnostics -Findings $findings -Path (Join-Path $dir 'live') -Context $ctx
+    Write-Host ''
+    Write-Host ('  Report saved: ' + $dir) -ForegroundColor DarkGray
+    Show-SFShareOffer -Findings $findings -Context $ctx -Title 'what is slowing my game'
 }
 
 function Show-Advanced {
@@ -262,7 +273,20 @@ if ($Revert) { Show-SFRevertMenu -DryRun:$DryRun; return }
 
 if ($DiagnoseOnly) {
     Show-SFBanner $ctx
-    [void](Invoke-HealthCheck -Save)
+    $findings = Invoke-HealthCheck -Save
+    Show-SFShareOffer -Findings $findings -Context $ctx
+    return
+}
+
+if ($LiveCheck) {
+    Show-SFBanner $ctx
+    Invoke-LiveCheck
+    return
+}
+
+if ($Benchmark) {
+    Show-SFBanner $ctx
+    Show-SFBenchmarkMenu -Context $ctx
     return
 }
 
@@ -294,12 +318,16 @@ while ($true) {
     Write-Host '  5) Custom (start from the recommendation, pick everything yourself)'
     Write-Host '  6) Undo a previous run'
     Write-Host '  7) Game and driver settings cards (TEKKEN 8, VALORANT, CS2, NVIDIA, AMD)'
+    Write-Host '  8) What''s slowing my game? (run it while playing)'
+    Write-Host '  9) Measure FPS before / after'
     Write-Host '  0) Exit'
     if ($opts.DryRun) { Write-Host '  [dry run is ON]' -ForegroundColor White }
     $choice = Read-SFInput '  Choice: '
     if ($null -eq $choice) { return }
     switch -Regex ($choice) {
-        '^1$' { [void](Invoke-HealthCheck -Save); [void](Read-SFInput '  Enter to go back...') }
+        '^1$' { $findings = Invoke-HealthCheck -Save; Show-SFShareOffer -Findings $findings -Context $ctx }
+        '^8$' { Invoke-LiveCheck }
+        '^9$' { Show-SFBenchmarkMenu -Context $ctx; [void](Read-SFInput '  Enter to go back...') }
         '^2$' { Start-Optimize $ctx.SuggestedPreset; [void](Read-SFInput '  Enter to go back...') }
         '^3$' { Start-Optimize $other; [void](Read-SFInput '  Enter to go back...') }
         '^4$' { Start-Optimize 'Minimal'; [void](Read-SFInput '  Enter to go back...') }

@@ -33,6 +33,17 @@ To undo
 - A Windows restore point is made before every run. It undoes everything,
   including the debloat tools: press Win+R, type rstrui, press Enter.
 
+Game running worse than it should?
+-----------------------------------
+Open Run.bat, choose 8, then switch to your game and play until it beeps.
+It shows what slowed the game down (overlays, streams, browsers, low memory)
+and changes nothing. Press c afterwards to copy a summary for Discord.
+
+Measuring FPS
+-------------
+Choose 9 to record a minute of your game and see average FPS and 1% lows.
+Measure once before a change and once after, in the same place in the game.
+
 New versions
 ------------
 When a new version is out, the menu says so. Type U to download it. It goes

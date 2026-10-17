@@ -310,13 +310,14 @@ function Get-SFDiagnostics {
 }
 
 function Write-SFDiagnostics {
-    param([Parameter(Mandatory)]$Findings)
+    param([Parameter(Mandatory)]$Findings, [switch]$NoBios)
     $area = ''
     foreach ($x in $Findings) {
         if ($x.Area -ne $area) { $area = $x.Area; Write-SFHeader $area }
         Write-SFStatus $x.Status ('{0}: {1}' -f $x.Item, $x.Value)
         if ($x.Advice -and $x.Status -ne 'OK') { Write-Host ('            ' + $x.Advice) -ForegroundColor DarkGray }
     }
+    if ($NoBios) { return }
     $bios = @($Findings | Where-Object { $_.Bios })
     Write-SFHeader 'Do this outside Windows (BIOS / hardware) - read it out on Discord'
     if ($bios.Count -eq 0) { Write-SFStatus 'OK' 'Nothing urgent found. Still worth checking XMP/EXPO and Resizable BAR are on.' }
@@ -335,4 +336,31 @@ function Save-SFDiagnostics {
     $bios = @($Findings | Where-Object { $_.Bios })
     if ($bios.Count -gt 0) { $lines += ''; $lines += 'Outside Windows (BIOS / hardware):'; foreach ($b in $bios) { $lines += (' - ' + $b.Bios) } }
     [System.IO.File]::WriteAllLines($Path + '.txt', $lines, (New-Object System.Text.UTF8Encoding $false))
+}
+
+# Discord's message limit is 2000 characters; the code block keeps the columns lined up.
+function Format-SFShareText {
+    param([Parameter(Mandatory)]$Findings, $Context, [string]$Title = 'health check', [int]$MaxChars = 1900)
+    $head = @('SteadyFrame {0} - {1} - {2}' -f (Get-SFVersion), $Title, $env:COMPUTERNAME)
+    if ($Context) {
+        $head += ('{0} | {1} GB {2}-{3} x{4} | {5}' -f $Context.CpuName, $Context.Ram.TotalGB, $Context.Ram.Type, $Context.Ram.SpeedMTs, $Context.Ram.Sticks, (@($Context.Gpus) -join ' + '))
+        $head += ('Windows {0} {1} {2}' -f $Context.OsMajor, $Context.Edition, $Context.DisplayVersion)
+    }
+    $issues = @($Findings | Where-Object { $_.Status -eq 'BAD' }) + @($Findings | Where-Object { $_.Status -eq 'WARN' })
+    $lines = @($issues | ForEach-Object { '[{0,-4}] {1} / {2}: {3}' -f $_.Status, $_.Area, $_.Item, $_.Value })
+    if ($lines.Count -eq 0) { $lines = @('No problems found.') }
+    $ok = @($Findings | Where-Object { $_.Status -eq 'OK' }).Count
+    $tail = '(and {0} OK)' -f $ok
+
+    $out = @() + $head + ''
+    $budget = $MaxChars - 8 - (($head + $tail) | Measure-Object -Property Length -Sum).Sum - 40
+    $used = 0
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($used + $lines[$i].Length + 1 -gt $budget) { $out += ('... {0} more in the saved report' -f ($lines.Count - $i)); break }
+        $out += $lines[$i]
+        $used += $lines[$i].Length + 1
+    }
+    $out += ''
+    $out += $tail
+    return ('```' + "`n" + ($out -join "`n") + "`n" + '```')
 }

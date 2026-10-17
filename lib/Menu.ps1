@@ -163,3 +163,47 @@ function Show-SFUpdate {
     try { Start-Process -FilePath 'explorer.exe' -ArgumentList ('"{0}"' -f $r.Path) } catch { }
     Write-Host '  Close this window and open Run.bat in the new folder. You can delete this old folder afterwards.' -ForegroundColor White
 }
+
+function Show-SFShareOffer {
+    param([Parameter(Mandatory)]$Findings, $Context, [string]$Title = 'health check')
+    $ans = Read-SFInput '  c = copy a short summary for Discord, Enter = back: '
+    if ($ans -notmatch '^(?i)c$') { return }
+    try {
+        Set-Clipboard -Value (Format-SFShareText -Findings $Findings -Context $Context -Title $Title)
+        Write-SFStatus 'OK' 'Copied. Paste it in Discord with Ctrl+V.'
+    } catch {
+        Write-SFStatus 'FAIL' ('Could not copy: ' + $_.Exception.Message)
+    }
+    [void](Read-SFInput '  Enter to go back...')
+}
+
+function Show-SFBenchmarkMenu {
+    param($Context)
+    Write-SFHeader 'Measure FPS'
+    Write-Host '  Records your game''s frame times for a minute and shows average FPS and 1% / 0.1% lows.'
+    Write-Host '  Measure once before a change and once after, in the same place in the game.'
+    $pins = Read-SFJson (Get-SFExternalPaths).Pins
+    $pin = $pins.presentmon
+    if (-not (Test-Path -LiteralPath (Join-Path (Get-SFExternalPaths).Cache $pin.file))) {
+        Write-Host ''
+        Write-Host ('  This uses PresentMon {0}, Intel''s free frame-time tool. It is downloaded once from GitHub' -f $pin.tag)
+        Write-Host '  (about 1 MB) and checked against its SHA256 before it runs. It doesn''t touch the game itself.'
+        if (-not (Confirm-SF '  Download it?' -DefaultYes)) { return }
+    }
+    Write-Host ''
+    Write-Host '  Looking for a running game (have it open)...' -ForegroundColor DarkGray
+    $game = Find-SFRunningGame -Context $Context
+    if ($game -and -not (Confirm-SF ('  Measure {0}?' -f $game) -DefaultYes)) { $game = $null }
+    if (-not $game) {
+        $game = Read-SFInput '  Game .exe name (for example RustClient.exe), empty = cancel: '
+        if (-not $game) { return }
+    }
+    $label = Read-SFInput '  Name this run (for example: before, after, overlay off): '
+    if ($null -eq $label) { return }
+    try {
+        $runs = Invoke-SFBenchmark -Game $game -Label $label
+        Write-SFBenchmarkTable $runs
+    } catch {
+        Write-SFStatus 'FAIL' $_.Exception.Message
+    }
+}

@@ -28,7 +28,7 @@ function Invoke-SFDownload {
 }
 
 function Get-SFExternalTool {
-    param([Parameter(Mandatory)][ValidateSet('winutil', 'win11debloat')][string]$Tool, [ValidateSet('Pinned', 'Latest')][string]$Source = 'Pinned')
+    param([Parameter(Mandatory)][ValidateSet('winutil', 'win11debloat', 'presentmon')][string]$Tool, [ValidateSet('Pinned', 'Latest')][string]$Source = 'Pinned')
     $paths = Get-SFExternalPaths
     $pins = Read-SFJson $paths.Pins
     $pin = Get-SFProp $pins $Tool

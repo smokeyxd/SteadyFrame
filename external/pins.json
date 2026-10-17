@@ -15,5 +15,12 @@
     "file": "win11debloat-2026.08.24.zip",
     "latestApi": "https://api.github.com/repos/Raphire/Win11Debloat/releases/latest",
     "reviewed": "2026-10-01"
+  },
+  "presentmon": {
+    "tag": "v2.6.0",
+    "url": "https://github.com/GameTechDev/PresentMon/releases/download/v2.6.0/PresentMon-2.6.0-x64.exe",
+    "sha256": "b2a706bc6ad475749e3b7e3409263aa1e6906d45bdcf993f6dbc0f660188f1af",
+    "file": "PresentMon-2.6.0-x64.exe",
+    "reviewed": "2026-10-17"
   }
 }

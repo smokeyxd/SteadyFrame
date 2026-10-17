@@ -686,6 +686,84 @@ It 'a checksum mismatch installs nothing and leaves nothing behind' {
 
 Remove-Item -LiteralPath $updBase -Recurse -Force -ErrorAction SilentlyContinue
 
+Write-Host 'Live check and FPS' -ForegroundColor Cyan
+
+It 'FPS stats: average over real time, 1% and 0.1% lows from the slow frames' {
+    $s = Get-SFFrameStats (@(@(10.0) * 980) + @(@(50.0) * 20))
+    Assert-Equal 1000 $s.Frames
+    Assert-Equal 10.8 $s.Seconds
+    Assert-Equal 92.6 $s.AvgFps
+    Assert-Equal 20 $s.Low1
+    Assert-Equal 20 $s.Low01
+    Assert-Equal 100 (Get-SFFrameStats (@(10.0) * 500)).Low1 'steady frames'
+    Assert-Null (Get-SFFrameStats @(16.6, 16.7)) 'too few frames'
+}
+
+It 'reads frame times from PresentMon CSV and skips NA and zero' {
+    $csv = Join-Path $env:TEMP ('sf-pm-' + [guid]::NewGuid().ToString('N') + '.csv')
+    Set-Content -LiteralPath $csv -Encoding Ascii -Value @('Application,ProcessID,MsBetweenPresents,DisplayedTime',
+        'RustClient.exe,1,16.5,NA', 'RustClient.exe,1,NA,NA', 'RustClient.exe,1,0,NA', 'RustClient.exe,1,33.25,16.6')
+    Assert-Equal '16.5,33.25' ((ConvertFrom-SFPresentMonCsv $csv) -join ',')
+    Remove-Item -LiteralPath $csv -Force
+}
+
+It 'a one-run FPS history stays a list after saving and loading' {
+    $p = Join-Path $env:TEMP ('sf-fps-' + [guid]::NewGuid().ToString('N') + '.json')
+    Save-SFJson -Object @([pscustomobject]@{ Label = 'before'; AvgFps = 100 }) -Path $p
+    $back = @(Read-SFJson $p)
+    Assert-Equal 1 $back.Count
+    Save-SFJson -Object @($back + [pscustomobject]@{ Label = 'after'; AvgFps = 110 }) -Path $p
+    Assert-Equal 'before,after' ((@(Read-SFJson $p) | ForEach-Object { $_.Label }) -join ',')
+    Remove-Item -LiteralPath $p -Force
+}
+
+function New-FakeLiveSample([hashtable]$Gpu, [object[]]$Procs, [double]$FreeMB = 16000) {
+    [pscustomobject]@{
+        Seconds = 20; Processes = $Procs; GpuByName = $Gpu
+        Memory = [pscustomobject]@{ TotalMB = 32512; AvailableMB = $FreeMB; CommitMB = 43930; CommitLimitMB = 45260 }
+        Compression = $false
+        Hypervisor = [pscustomobject]@{ Present = $true; Hvci = $true; Features = @() }
+    }
+}
+
+It 'live check points at a busy overlay, full RAM and desktop compositing' {
+    $procs = @([pscustomobject]@{ Name = 'RustClient'; Cores = 4.9; MemoryMB = 23800 },
+        [pscustomobject]@{ Name = 'NVIDIA Overlay'; Cores = 1.9; MemoryMB = 1800 },
+        [pscustomobject]@{ Name = 'DiscordCanary'; Cores = 0.2; MemoryMB = 2000 })
+    $f = @(Get-SFLiveFindings -Sample (New-FakeLiveSample @{ RustClient = 35.0; dwm = 27.0; DiscordCanary = 6.0 } $procs 700))
+    $by = @{}; foreach ($x in $f) { if (-not $by.ContainsKey($x.Item)) { $by[$x.Item] = $x } }
+    Assert-True ($by['Game'].Value -like 'RustClient*') 'finds the game by its GPU use'
+    Assert-Equal 'WARN' $by['NVIDIA Overlay'].Status
+    Assert-True ($by['NVIDIA Overlay'].Advice -like '*Instant Replay*')
+    Assert-Equal 0 @($f | Where-Object { $_.Area -eq 'Background' -and $_.Item -eq 'DiscordCanary' }).Count 'under half a core is not flagged'
+    Assert-Equal 'BAD' $by['Free RAM'].Status
+    Assert-Equal 'BAD' $by['Committed memory'].Status
+    Assert-Equal 'WARN' $by['Memory compression'].Status
+    Assert-Equal 'WARN' $by['Windows desktop compositor'].Status
+    Assert-Equal 'INFO' $by['Graphics card busy'].Status
+}
+
+It 'live check says so when no game was rendering, and prefers a known game' {
+    $none = @(Get-SFLiveFindings -Sample (New-FakeLiveSample @{ dwm = 20.0; chrome = 8.0; wallpaper64 = 31.0 } @()))
+    Assert-Equal 'WARN' ($none | Where-Object Item -eq 'Game').Status
+    Assert-Equal 0 @($none | Where-Object Item -eq 'Windows desktop compositor').Count
+    $sample = New-FakeLiveSample @{ Photoshop = 40.0; cs2 = 30.0 } @()
+    Assert-Equal 'cs2' (Find-SFGameInSample -Sample $sample -KnownGames @('cs2.exe'))
+    Assert-Equal 'Photoshop' (Find-SFGameInSample -Sample $sample)
+}
+
+It 'Discord summary lists problems first and fits in one message' {
+    $f = @((New-SFFinding 'A' 'ok item' 'fine' 'OK'), (New-SFFinding 'B' 'warn item' 'x' 'WARN'), (New-SFFinding 'C' 'bad item' 'y' 'BAD'))
+    $t = Format-SFShareText -Findings $f -Context (New-FakeContext)
+    Assert-True ($t.StartsWith('```') -and $t.EndsWith('```')) 'code block'
+    Assert-True ($t.IndexOf('bad item') -lt $t.IndexOf('warn item')) 'BAD before WARN'
+    Assert-True ($t -notmatch 'ok item') 'OK items are only counted'
+    $many = @(1..300 | ForEach-Object { New-SFFinding 'Background' ('program number {0} with a long name' -f $_) 'busy busy busy' 'WARN' })
+    $long = Format-SFShareText -Findings $many -Context (New-FakeContext)
+    Assert-True ($long.Length -le 2000) ('length ' + $long.Length)
+    Assert-True ($long -match 'more in the saved report')
+}
+
 Write-Host 'Misc' -ForegroundColor Cyan
 
 It 'number list parser handles ranges, commas and junk' {
