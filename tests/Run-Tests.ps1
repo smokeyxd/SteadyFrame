@@ -764,6 +764,76 @@ It 'Discord summary lists problems first and fits in one message' {
     Assert-True ($long -match 'more in the saved report')
 }
 
+It 'PresentMon gets a game name with spaces as one argument' {
+    $a = @(Get-SFPresentMonArgs -ExeName 'Hands Over.exe' -Csv 'C:\x y\out.csv' -Seconds 60)
+    Assert-Equal '"Hands Over.exe"' $a[[array]::IndexOf($a, '--process_name') + 1]
+    Assert-Equal '"C:\x y\out.csv"' $a[[array]::IndexOf($a, '--output_file') + 1]
+}
+
+Write-Host 'Menus' -ForegroundColor Cyan
+
+function New-TestRows([int]$Count, [string]$Group = $null) {
+    @(1..$Count | ForEach-Object {
+            [pscustomobject]@{ Label = "row $_"; Detail = "detail $_"; Selected = $false; Locked = $false; LockReason = ''
+                Section = $(if ($_ -le $Count / 2) { 'First' } else { 'Second' }); Group = $Group; Tag = '[A]'; Source = $null }
+        })
+}
+
+It 'checklist rows: locked stay off, radio groups keep exactly one, updatePolicy cannot be cleared' {
+    $rows = New-TestRows 3
+    $rows[1].Locked = $true
+    Switch-SFChecklistRow -Rows $rows -Index 1
+    Assert-True (-not $rows[1].Selected) 'locked'
+    Switch-SFChecklistRow -Rows $rows -Index 0
+    Assert-True $rows[0].Selected
+    $radio = New-TestRows 3 'updatePolicy'
+    Switch-SFChecklistRow -Rows $radio -Index 0
+    Switch-SFChecklistRow -Rows $radio -Index 2
+    Assert-Equal 'False,False,True' (($radio | ForEach-Object { $_.Selected }) -join ',')
+    Switch-SFChecklistRow -Rows $radio -Index 2
+    Assert-True $radio[2].Selected 'updatePolicy keeps its pick'
+}
+
+It 'checklist keys move within bounds and A / N tick everything that can be ticked' {
+    $rows = New-TestRows 5
+    $rows[0].Locked = $true
+    $st = New-SFChecklistState $rows
+    Assert-Equal 1 $st.Cursor 'starts on the first row that can be changed'
+    Invoke-SFChecklistKey $st 'Up'; Invoke-SFChecklistKey $st 'Up'
+    Assert-Equal 0 $st.Cursor
+    Invoke-SFChecklistKey $st 'End'; Invoke-SFChecklistKey $st 'Down'
+    Assert-Equal 4 $st.Cursor
+    Invoke-SFChecklistKey $st 'a'
+    Assert-Equal 4 @($rows | Where-Object Selected).Count 'locked row stays off'
+    Invoke-SFChecklistKey $st 'n'
+    Assert-Equal 0 @($rows | Where-Object Selected).Count
+}
+
+It 'checklist frame fits the window and keeps the highlighted row on screen' {
+    $st = New-SFChecklistState (New-TestRows 40)
+    $st.Cursor = 35
+    $lines = Get-SFChecklistLines -State $st -Title 'T' -Width 80 -Height 25
+    Assert-True ($lines.Count -le 25) ('lines ' + $lines.Count)
+    $hl = @($lines | Where-Object { @($_).Count -eq 1 -and @($_)[0].Back -eq 'DarkCyan' })
+    Assert-Equal 1 $hl.Count 'one highlighted row'
+    Assert-True ($hl[0][0].Text -like ' > *row 36*') $hl[0][0].Text
+    Assert-True ((@($lines) | ForEach-Object { ($_ | ForEach-Object { $_.Text }) -join '' } | Where-Object { $_ -like '*detail 36*' }).Count -eq 1) 'details of the highlighted row'
+    $st.Cursor = 0
+    $lines = Get-SFChecklistLines -State $st -Title 'T' -Width 80 -Height 25
+    Assert-Equal 0 $st.Top 'scrolled back to the top'
+}
+
+It 'menu frame highlights one item and shows notes' {
+    $items = @(@{ Key = '1'; Label = 'One' }, @{ Key = '2'; Label = 'Two'; Note = '(recommended)'; NoteColor = 'Green' })
+    # not @(...): the function returns its list of lines as one object, and @() would wrap it again
+    $lines = Get-SFMenuLines -Items $items -Cursor 1 -Width 60
+    $hl = @($lines | Where-Object { @($_).Count -gt 0 -and @($_)[0].Back -eq 'DarkCyan' })
+    Assert-Equal 1 $hl.Count
+    Assert-True ($hl[0][0].Text -like ' > 2) Two  (recommended)*')
+    Assert-Equal 60 $hl[0][0].Text.Length 'highlight bar spans the width'
+    Assert-Equal 'a b,c d' ((Split-SFWrapped -Text 'a b c d' -Width 3) -join ',')
+}
+
 Write-Host 'Misc' -ForegroundColor Cyan
 
 It 'number list parser handles ranges, commas and junk' {

@@ -32,8 +32,205 @@ function ConvertFrom-SFNumberList {
     return @($nums | Where-Object { $_ -ge 1 -and $_ -le $Max } | Sort-Object -Unique)
 }
 
+# Radio groups: picking one row clears the others in its group. updatePolicy always needs one
+# picked, so its rows can't be cleared.
+function Switch-SFChecklistRow {
+    param([Parameter(Mandatory)]$Rows, [int]$Index)
+    $rows = @($Rows)
+    if ($Index -lt 0 -or $Index -ge $rows.Count) { return }
+    $r = $rows[$Index]
+    if (Get-SFProp $r 'Locked' $false) { return }
+    $g = Get-SFProp $r 'Group'
+    if ($g) {
+        if (-not $r.Selected) { foreach ($o in $rows) { if ((Get-SFProp $o 'Group') -eq $g) { $o.Selected = $false } }; $r.Selected = $true }
+        elseif ($g -ne 'updatePolicy') { $r.Selected = $false }
+    } else {
+        $r.Selected = -not $r.Selected
+    }
+}
+
+function Set-SFChecklistAll {
+    param([Parameter(Mandatory)]$Rows, [bool]$Selected)
+    foreach ($r in @($Rows)) {
+        if (Get-SFProp $r 'Group') { continue }
+        if ($Selected -and (Get-SFProp $r 'Locked' $false)) { continue }
+        $r.Selected = $Selected
+    }
+}
+
+function New-SFChecklistState {
+    param([Parameter(Mandatory)]$Rows)
+    $rows = @($Rows)
+    $first = 0
+    for ($i = 0; $i -lt $rows.Count; $i++) { if (-not (Get-SFProp $rows[$i] 'Locked' $false)) { $first = $i; break } }
+    return [pscustomobject]@{ Rows = $rows; Cursor = $first; Top = 0 }
+}
+
+function Invoke-SFChecklistKey {
+    param([Parameter(Mandatory)]$State, [string]$Key)
+    $last = $State.Rows.Count - 1
+    switch ($Key) {
+        'Up' { $State.Cursor = [math]::Max(0, $State.Cursor - 1) }
+        'Down' { $State.Cursor = [math]::Min($last, $State.Cursor + 1) }
+        'PageUp' { $State.Cursor = [math]::Max(0, $State.Cursor - 10) }
+        'PageDown' { $State.Cursor = [math]::Min($last, $State.Cursor + 10) }
+        'Home' { $State.Cursor = 0 }
+        'End' { $State.Cursor = $last }
+        'Space' { Switch-SFChecklistRow -Rows $State.Rows -Index $State.Cursor }
+        'a' { Set-SFChecklistAll -Rows $State.Rows -Selected $true }
+        'n' { Set-SFChecklistAll -Rows $State.Rows -Selected $false }
+    }
+}
+
+# Also moves State.Top so the highlighted row stays on screen.
+function Get-SFChecklistLines {
+    param([Parameter(Mandatory)]$State, [string]$Title, [int]$Width = 100, [int]$Height = 40)
+    $rows = $State.Rows
+    $lines = New-Object System.Collections.ArrayList
+    [void]$lines.Add(@((New-SFSeg ('  ' + $Title) 'White')))
+    if (@($rows | Where-Object { (Get-SFProp $_ 'Tag' '') -eq '[C]' }).Count -gt 0) {
+        [void]$lines.Add(@((New-SFSeg '  [C] = weak or no proof, some are placebo. Off by default; measure before keeping one.' 'Yellow')))
+    }
+    [void]$lines.Add(@())
+
+    $display = New-Object System.Collections.ArrayList
+    $section = $null
+    for ($i = 0; $i -lt $rows.Count; $i++) {
+        $sec = Get-SFProp $rows[$i] 'Section'
+        if ($sec -and $sec -ne $section) { $section = $sec; [void]$display.Add([pscustomobject]@{ Section = $sec; Row = -1 }) }
+        [void]$display.Add([pscustomobject]@{ Section = $null; Row = $i })
+    }
+    $cur = 0
+    for ($d = 0; $d -lt $display.Count; $d++) { if ($display[$d].Row -eq $State.Cursor) { $cur = $d; break } }
+
+    $detailHeight = 5
+    $listHeight = [math]::Max(3, $Height - $lines.Count - $detailHeight - 3)
+    if ($cur -lt $State.Top) { $State.Top = $cur }
+    if ($cur -gt 0 -and $cur -eq $State.Top -and $display[$cur - 1].Row -eq -1) { $State.Top = $cur - 1 }
+    if ($cur -ge $State.Top + $listHeight) { $State.Top = $cur - $listHeight + 1 }
+    $State.Top = [math]::Max(0, [math]::Min($State.Top, [math]::Max(0, $display.Count - $listHeight)))
+
+    for ($j = 0; $j -lt $listHeight; $j++) {
+        $d = $State.Top + $j
+        if ($d -ge $display.Count) { [void]$lines.Add(@()); continue }
+        $item = $display[$d]
+        if ($item.Row -lt 0) { [void]$lines.Add(@((New-SFSeg ('  -- ' + $item.Section + ' --') 'Cyan'))); continue }
+        $r = $rows[$item.Row]
+        $locked = [bool](Get-SFProp $r 'Locked' $false)
+        $box = if ($locked) { '[-]' } elseif ($r.Selected) { '[x]' } else { '[ ]' }
+        $tag = Get-SFProp $r 'Tag' ''
+        $note = if ($locked) { '   (n/a: ' + (Get-SFProp $r 'LockReason' '') + ')' } else { '' }
+        if ($item.Row -eq $State.Cursor) {
+            $text = ' > {0} {1}{2}{3}' -f $box, $(if ($tag) { $tag + ' ' } else { '' }), $r.Label, $note
+            [void]$lines.Add(@((New-SFSeg $text.PadRight($Width) 'White' 'DarkCyan')))
+        } else {
+            $color = if ($locked) { 'DarkGray' } elseif ($r.Selected) { 'Green' } else { 'Gray' }
+            $segs = @((New-SFSeg ('   ' + $box + ' ') $color))
+            if ($tag) { $segs += New-SFSeg ($tag + ' ') 'DarkGray' }
+            $segs += New-SFSeg $r.Label $color
+            if ($note) { $segs += New-SFSeg $note 'DarkGray' }
+            [void]$lines.Add($segs)
+        }
+    }
+
+    [void]$lines.Add(@((New-SFSeg ('  ' + ('-' * [math]::Max(10, $Width - 4))) 'DarkGray')))
+    $r = $rows[$State.Cursor]
+    $detail = Get-SFProp $r 'Detail' ''
+    if (Get-SFProp $r 'Locked' $false) { $detail = 'Not available on this PC: ' + (Get-SFProp $r 'LockReason' '') + "`n" + $detail }
+    $wrapped = @(Split-SFWrapped -Text $detail -Width ([math]::Max(20, $Width - 4)))
+    for ($j = 0; $j -lt $detailHeight; $j++) {
+        if ($j -lt $wrapped.Count) { [void]$lines.Add(@((New-SFSeg ('  ' + $wrapped[$j]) 'Gray'))) } else { [void]$lines.Add(@()) }
+    }
+    $selected = @($rows | Where-Object { $_.Selected }).Count
+    [void]$lines.Add(@((New-SFSeg ('  {0} of {1} selected' -f $selected, $rows.Count) 'White')))
+    [void]$lines.Add(@((New-SFSeg '  Up/Down move   Space tick   A all   N none   Enter continue   Esc cancel' 'DarkGray')))
+    return , $lines.ToArray()
+}
+
 # Row fields: Label, Detail, Selected, Locked, LockReason, Section, Group, Tag. Returns $null on cancel.
 function Show-SFChecklist {
+    param([string]$Title, [Parameter(Mandatory)]$Rows)
+    $rows = @($Rows)
+    if ($rows.Count -eq 0 -or -not (Test-SFKeyConsole)) { return (Show-SFChecklistLines -Title $Title -Rows $rows) }
+    $state = New-SFChecklistState $rows
+    Enter-SFFrameMode
+    try {
+        $fresh = $true
+        while ($true) {
+            $lines = Get-SFChecklistLines -State $state -Title $Title -Width ([Console]::WindowWidth - 1) -Height ([Console]::WindowHeight - 1)
+            Write-SFFrame -Lines $lines -Fresh:$fresh
+            $fresh = $false
+            $k = Read-SFKey
+            if ($k -eq 'Enter') { return $rows }
+            if ($k -eq 'Escape' -or $k -eq 'q') { return $null }
+            Invoke-SFChecklistKey -State $state -Key $k
+        }
+    } finally {
+        Exit-SFFrameMode
+    }
+}
+
+function Write-SFLine {
+    param($Segments)
+    foreach ($s in @($Segments)) {
+        if ($null -eq $s -or -not $s.Text) { continue }
+        if ($s.Back) { Write-Host $s.Text -NoNewline -ForegroundColor $s.Color -BackgroundColor $s.Back }
+        else { Write-Host $s.Text -NoNewline -ForegroundColor $s.Color }
+    }
+    Write-Host ''
+}
+
+function Get-SFMenuLines {
+    param($Header = @(), [Parameter(Mandatory)]$Items, [int]$Cursor = 0, [string]$Footer = '', [int]$Width = 100)
+    $lines = New-Object System.Collections.ArrayList
+    foreach ($l in $Header) { [void]$lines.Add($l) }
+    [void]$lines.Add(@())
+    $items = @($Items)
+    for ($i = 0; $i -lt $items.Count; $i++) {
+        $it = $items[$i]
+        $label = '{0}) {1}' -f $it.Key, $it.Label
+        if ($i -eq $Cursor) {
+            $text = ' > ' + $label + $(if ($it.Note) { '  ' + $it.Note } else { '' })
+            [void]$lines.Add(@((New-SFSeg $text.PadRight($Width) 'White' 'DarkCyan')))
+        } else {
+            $segs = @((New-SFSeg ('   ' + $label) 'Gray'))
+            if ($it.Note) { $segs += New-SFSeg ('  ' + $it.Note) $(if ($it.NoteColor) { $it.NoteColor } else { 'DarkGray' }) }
+            [void]$lines.Add($segs)
+        }
+    }
+    if ($Footer) { [void]$lines.Add(@()); [void]$lines.Add(@((New-SFSeg ('  ' + $Footer) 'DarkGray'))) }
+    return , $lines.ToArray()
+}
+
+# Escape picks the '0' item (Exit / Back); without a real console it falls back to a typed answer.
+function Show-SFMenu {
+    param($Header = @(), [Parameter(Mandatory)]$Items, [string]$Footer = '', [string[]]$ExtraKeys = @(), [string]$Prompt = '  Choice: ')
+    $items = @($Items)
+    $keys = @($items | ForEach-Object { "$($_.Key)".ToLowerInvariant() })
+    if (-not (Test-SFKeyConsole)) {
+        foreach ($l in (Get-SFMenuLines -Header $Header -Items $items -Cursor -1 -Footer $Footer)) { Write-SFLine $l }
+        return (Read-SFInput $Prompt)
+    }
+    Enter-SFFrameMode
+    try {
+        $cur = 0
+        $fresh = $true
+        while ($true) {
+            Write-SFFrame -Lines (Get-SFMenuLines -Header $Header -Items $items -Cursor $cur -Footer $Footer -Width ([Console]::WindowWidth - 1)) -Fresh:$fresh
+            $fresh = $false
+            $k = Read-SFKey
+            if ($k -eq 'Up') { $cur = ($cur - 1 + $items.Count) % $items.Count }
+            elseif ($k -eq 'Down') { $cur = ($cur + 1) % $items.Count }
+            elseif ($k -eq 'Enter') { return $keys[$cur] }
+            elseif ($k -eq 'Escape') { if ($keys -contains '0') { return '0' } else { return $null } }
+            elseif ($k -and ($keys -contains $k -or $ExtraKeys -contains $k)) { return $k }
+        }
+    } finally {
+        Exit-SFFrameMode
+    }
+}
+
+function Show-SFChecklistLines {
     param([string]$Title, [Parameter(Mandatory)]$Rows)
     $rows = @($Rows)
     $hasC = (@($rows | Where-Object { (Get-SFProp $_ 'Tag' '') -eq '[C]' }).Count -gt 0)
@@ -64,8 +261,8 @@ function Show-SFChecklist {
         if ($null -eq $cmd) { return $null }
         if ($cmd -eq '') { return $rows }
         if ($cmd -match '^(?i)q$') { return $null }
-        if ($cmd -match '^(?i)a$') { foreach ($r in $rows) { if (-not (Get-SFProp $r 'Locked' $false) -and -not (Get-SFProp $r 'Group')) { $r.Selected = $true } }; continue }
-        if ($cmd -match '^(?i)n$') { foreach ($r in $rows) { if (-not (Get-SFProp $r 'Group')) { $r.Selected = $false } }; continue }
+        if ($cmd -match '^(?i)a$') { Set-SFChecklistAll -Rows $rows -Selected $true; continue }
+        if ($cmd -match '^(?i)n$') { Set-SFChecklistAll -Rows $rows -Selected $false; continue }
         if ($cmd -match '^(?i)i\s*(\d+)$') {
             $n = [int]$Matches[1]
             if ($n -ge 1 -and $n -le $rows.Count) {
@@ -78,18 +275,7 @@ function Show-SFChecklist {
         }
         $nums = ConvertFrom-SFNumberList $cmd $rows.Count
         if ($null -eq $nums) { Write-Host '  Did not understand that.' -ForegroundColor Yellow; continue }
-        foreach ($n in $nums) {
-            $r = $rows[$n - 1]
-            if (Get-SFProp $r 'Locked' $false) { continue }
-            $g = Get-SFProp $r 'Group'
-            if ($g) {
-                # radio group. updatePolicy always needs one picked, so it can't be cleared
-                if (-not $r.Selected) { foreach ($o in $rows) { if ((Get-SFProp $o 'Group') -eq $g) { $o.Selected = $false } }; $r.Selected = $true }
-                elseif ($g -ne 'updatePolicy') { $r.Selected = $false }
-            } else {
-                $r.Selected = -not $r.Selected
-            }
-        }
+        foreach ($n in $nums) { Switch-SFChecklistRow -Rows $rows -Index ($n - 1) }
     }
 }
 
@@ -132,19 +318,25 @@ function ConvertTo-SFExternalRows {
     return @($out)
 }
 
+function Get-SFBannerLines {
+    param([Parameter(Mandatory)]$Context)
+    $lines = New-Object System.Collections.ArrayList
+    [void]$lines.Add(@())
+    [void]$lines.Add(@((New-SFSeg '  SteadyFrame ' 'White'), (New-SFSeg ('v{0}  -  Windows tune-up for gaming PCs' -f (Get-SFVersion)) 'DarkGray')))
+    [void]$lines.Add(@((New-SFSeg ('  {0}  |  Windows {1} {2} {3} (build {4})  |  {5}' -f $Context.Computer, $Context.OsMajor, $Context.Edition, $Context.DisplayVersion, $Context.Build, $Context.FormFactor) 'Gray')))
+    $gpu = (@($Context.Gpus) -join ' + ')
+    [void]$lines.Add(@((New-SFSeg ('  {0}  |  {1} GB {2}-{3} x{4}  |  {5}  |  {6}' -f $Context.CpuName, $Context.Ram.TotalGB, $Context.Ram.Type, $Context.Ram.SpeedMTs, $Context.Ram.Sticks, $gpu, $Context.Disk.SystemDisk) 'Gray')))
+    $games = @(Get-SFProp $Context 'Games' @())
+    if ($games.Count -gt 0) { [void]$lines.Add(@((New-SFSeg ('  Games found: ' + (($games | ForEach-Object { $_.Name }) -join ', ')) 'Gray'))) }
+    if ($Context.IsDualCcdX3D) { [void]$lines.Add(@((New-SFSeg '  Dual-CCD X3D detected: keeping Balanced plan + Xbox Game Bar (AMD V-Cache driver needs them).' 'Yellow'))) }
+    if ($Context.IsIntelRaptor) { [void]$lines.Add(@((New-SFSeg '  Intel 13th/14th gen detected: the health check verifies the Vmin-shift microcode fix.' 'Yellow'))) }
+    return , $lines.ToArray()
+}
+
 function Show-SFBanner {
     param([Parameter(Mandatory)]$Context)
     Clear-Host
-    Write-Host ''
-    Write-Host '  SteadyFrame ' -ForegroundColor White -NoNewline
-    Write-Host ('v{0}  -  Windows tune-up for gaming PCs' -f (Get-SFVersion)) -ForegroundColor DarkGray
-    Write-Host ('  {0}  |  Windows {1} {2} {3} (build {4})  |  {5}' -f $Context.Computer, $Context.OsMajor, $Context.Edition, $Context.DisplayVersion, $Context.Build, $Context.FormFactor) -ForegroundColor Gray
-    $gpu = (@($Context.Gpus) -join ' + ')
-    Write-Host ('  {0}  |  {1} GB {2}-{3} x{4}  |  {5}  |  {6}' -f $Context.CpuName, $Context.Ram.TotalGB, $Context.Ram.Type, $Context.Ram.SpeedMTs, $Context.Ram.Sticks, $gpu, $Context.Disk.SystemDisk) -ForegroundColor Gray
-    $games = @(Get-SFProp $Context 'Games' @())
-    if ($games.Count -gt 0) { Write-Host ('  Games found: ' + (($games | ForEach-Object { $_.Name }) -join ', ')) -ForegroundColor Gray }
-    if ($Context.IsDualCcdX3D) { Write-Host '  Dual-CCD X3D detected: keeping Balanced plan + Xbox Game Bar (AMD V-Cache driver needs them).' -ForegroundColor Yellow }
-    if ($Context.IsIntelRaptor) { Write-Host '  Intel 13th/14th gen detected: the health check verifies the Vmin-shift microcode fix.' -ForegroundColor Yellow }
+    foreach ($l in (Get-SFBannerLines $Context)) { Write-SFLine $l }
 }
 
 function Show-SFUpdate {

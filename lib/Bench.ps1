@@ -36,6 +36,13 @@ function Get-SFFrameStats {
     }
 }
 
+# Start-Process joins arguments with spaces without quoting them, so "Hands Over.exe" arrived as two
+function Get-SFPresentMonArgs {
+    param([Parameter(Mandatory)][string]$ExeName, [Parameter(Mandatory)][string]$Csv, [int]$Seconds = 60)
+    return @('--process_name', ('"{0}"' -f $ExeName), '--output_file', ('"{0}"' -f $Csv), '--timed', $Seconds,
+        '--terminate_after_timed', '--no_console_stats', '--session_name', 'SteadyFrame', '--stop_existing_session')
+}
+
 function Get-SFBenchmarkDir {
     $dir = Join-Path (Get-SFRoot) 'runs\fps'
     if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
@@ -69,9 +76,7 @@ function Invoke-SFBenchmark {
     Write-Host "`r  Recording...        "
     try { [console]::Beep(660, 150) } catch { }
 
-    $argList = @('--process_name', $exeName, '--output_file', ('"{0}"' -f $csv), '--timed', $Seconds, '--terminate_after_timed',
-        '--no_console_stats', '--session_name', 'SteadyFrame', '--stop_existing_session')
-    $p = Start-Process -FilePath $tool.Path -ArgumentList $argList -PassThru -NoNewWindow
+    $p = Start-Process -FilePath $tool.Path -ArgumentList (Get-SFPresentMonArgs -ExeName $exeName -Csv $csv -Seconds $Seconds) -PassThru -NoNewWindow
     # PresentMon waits on its own; the extra minute is only for a stuck trace session
     if (-not $p.WaitForExit(($Seconds + 60) * 1000)) {
         try { $p.Kill() } catch { }
@@ -79,7 +84,10 @@ function Invoke-SFBenchmark {
     }
     try { [console]::Beep(880, 400) } catch { }
 
-    if (-not (Test-Path -LiteralPath $csv)) { throw "Nothing was recorded. Was $exeName running and on screen?" }
+    if (-not (Test-Path -LiteralPath $csv)) {
+        if ($p.ExitCode -ne 0) { throw "PresentMon stopped with an error (exit code $($p.ExitCode))." }
+        throw "Nothing was recorded. Was $exeName running and on screen?"
+    }
     $stats = Get-SFFrameStats (ConvertFrom-SFPresentMonCsv $csv)
     if (-not $stats) { throw "Too few frames were recorded from $exeName. Was it on screen the whole time?" }
 

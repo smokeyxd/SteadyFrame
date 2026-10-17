@@ -120,24 +120,36 @@ function Invoke-LiveCheck {
     Show-SFShareOffer -Findings $findings -Context $ctx -Title 'what is slowing my game'
 }
 
+function Get-TitleHeader {
+    param([string]$Title)
+    $h = New-Object System.Collections.ArrayList
+    [void]$h.Add(@())
+    [void]$h.Add(@((New-SFSeg ('  ' + $Title) 'White')))
+    return , $h.ToArray()
+}
+
 function Show-Advanced {
     while ($true) {
-        Write-SFHeader 'Advanced options'
-        Write-Host ('  1) Debloat tools source ........ {0}   (Pinned = reviewed + hash-checked | Latest | None)' -f $opts.ExternalSource)
-        Write-Host ('  2) Windows Update policy ....... {0}   (DeferFeature | SecurityOnly | Leave)' -f $opts.UpdatePolicy)
-        Write-Host ('  3) Show tier C tweaks .......... {0}   (weak-evidence / placebo / cosmetic, off by default)' -f $(if ($opts.ShowAll) { 'yes' } else { 'no' }))
-        Write-Host ('  4) Games for High priority ..... {0}' -f $(if (@($ctx.GameExes).Count) { $ctx.GameExes -join ', ' } else { '(none)' }))
-        Write-Host ('  5) Uses Game Pass / Xbox app ... {0}' -f $(if ($ctx.NoGamePass) { 'no' } else { 'yes' }))
-        Write-Host ('  6) Dry run ..................... {0}   (show what would change, change nothing)' -f $(if ($opts.DryRun) { 'yes' } else { 'no' }))
-        Write-Host '  0) Back'
-        switch (Read-SFInput '  Choice: ') {
+        $yes = { param($b) if ($b) { 'yes' } else { 'no' } }
+        $items = @(
+            @{ Key = '1'; Label = 'Debloat tools source'.PadRight(28); Note = $opts.ExternalSource + '   (Pinned = reviewed and hash-checked, Latest, None)' }
+            @{ Key = '2'; Label = 'Windows Update policy'.PadRight(28); Note = $opts.UpdatePolicy + '   (DeferFeature, SecurityOnly, Leave)' }
+            @{ Key = '3'; Label = 'Show tier C tweaks'.PadRight(28); Note = (& $yes $opts.ShowAll) + '   (weak evidence / placebo / cosmetic, off by default)' }
+            @{ Key = '4'; Label = 'Games for High priority'.PadRight(28); Note = $(if (@($ctx.GameExes).Count) { $ctx.GameExes -join ', ' } else { '(none)' }) }
+            @{ Key = '5'; Label = 'Uses Game Pass / Xbox app'.PadRight(28); Note = (& $yes (-not $ctx.NoGamePass)) }
+            @{ Key = '6'; Label = 'Dry run'.PadRight(28); Note = (& $yes $opts.DryRun) + '   (show what would change, change nothing)' }
+            @{ Key = '0'; Label = 'Back' }
+        )
+        switch (Show-SFMenu -Header (Get-TitleHeader 'Advanced options') -Items $items -Footer 'Up/Down and Enter, or press a number.   Esc = back') {
             '1' {
-                Write-Host '    1) Pinned - the reviewed versions, checked before running (default)'
-                Write-Host '    2) Latest - whatever was published today, NOT checked'
-                Write-Host '    3) None   - never run WinUtil / Win11Debloat, only SteadyFrame''s own tweaks'
-                switch (Read-SFInput '    Source: ') {
+                $src = Show-SFMenu -Header (Get-TitleHeader 'Where the debloat tools come from') -Items @(
+                    @{ Key = '1'; Label = 'Pinned'; Note = 'the reviewed versions, checked before running (default)' }
+                    @{ Key = '2'; Label = 'Latest'; Note = 'whatever was published today, NOT checked; only if you know why'; NoteColor = 'Yellow' }
+                    @{ Key = '3'; Label = 'None  '; Note = 'never run WinUtil / Win11Debloat, only SteadyFrame''s own tweaks' }
+                    @{ Key = '0'; Label = 'Back' })
+                switch ($src) {
                     '1' { $opts.ExternalSource = 'Pinned' }
-                    '2' { $opts.ExternalSource = 'Latest'; Write-Host '    Only use Latest if you know why: it runs code nobody has reviewed for this tool.' -ForegroundColor Yellow }
+                    '2' { $opts.ExternalSource = 'Latest' }
                     '3' { $opts.ExternalSource = 'None' }
                 }
             }
@@ -307,27 +319,27 @@ if ($Preset -ne 'Auto') {
 $update = if ($NoUpdateCheck) { $null } else { Get-SFUpdate }
 
 while ($true) {
-    Show-SFBanner $ctx
-    if ($update) { Write-Host ('  SteadyFrame {0} is out (you have {1}). Type U to get it.' -f $update.Version, (Get-SFVersion)) -ForegroundColor Cyan }
     $other = Get-OtherTier
-    Write-Host ''
-    Write-Host '  1) Health check only (changes nothing)'
-    Write-Host ('  2) Optimize - {0} preset ' -f $ctx.SuggestedPreset) -NoNewline; Write-Host '(recommended for this PC)' -ForegroundColor Green
-    Write-Host ('  3) Optimize - {0} preset' -f $other)
-    Write-Host '  4) Optimize - Minimal (safest, no debloat tools)'
-    Write-Host '  5) Custom (start from the recommendation, pick everything yourself)'
-    Write-Host '  6) Undo a previous run'
-    Write-Host '  7) Game and driver settings cards (TEKKEN 8, VALORANT, CS2, NVIDIA, AMD)'
-    Write-Host '  8) What''s slowing my game? (run it while playing)'
-    Write-Host '  9) Measure FPS before / after'
-    Write-Host '  0) Exit'
-    if ($opts.DryRun) { Write-Host '  [dry run is ON]' -ForegroundColor White }
-    $choice = Read-SFInput '  Choice: '
+    $header = New-Object System.Collections.ArrayList
+    foreach ($l in (Get-SFBannerLines $ctx)) { [void]$header.Add($l) }
+    if ($update) { [void]$header.Add(@((New-SFSeg ('  SteadyFrame {0} is out (you have {1}). Press U to get it.' -f $update.Version, (Get-SFVersion)) 'Cyan'))) }
+    if ($opts.DryRun) { [void]$header.Add(@((New-SFSeg '  [dry run is ON]' 'White'))) }
+    $items = @(
+        @{ Key = '1'; Label = 'Health check only (changes nothing)' }
+        @{ Key = '2'; Label = ('Optimize - {0} preset' -f $ctx.SuggestedPreset); Note = '(recommended for this PC)'; NoteColor = 'Green' }
+        @{ Key = '3'; Label = ('Optimize - {0} preset' -f $other) }
+        @{ Key = '4'; Label = 'Optimize - Minimal (safest, no debloat tools)' }
+        @{ Key = '5'; Label = 'Custom (start from the recommendation, pick everything yourself)' }
+        @{ Key = '6'; Label = 'Undo a previous run' }
+        @{ Key = '7'; Label = 'Game and driver settings cards (TEKKEN 8, VALORANT, CS2, NVIDIA, AMD)' }
+        @{ Key = '8'; Label = 'What''s slowing my game? (run it while playing)' }
+        @{ Key = '9'; Label = 'Measure FPS before / after' }
+        @{ Key = '0'; Label = 'Exit' }
+    )
+    $choice = Show-SFMenu -Header $header.ToArray() -Items $items -Footer 'Up/Down and Enter, or press a number.   A = advanced options' -ExtraKeys @('a', 'u')
     if ($null -eq $choice) { return }
     switch -Regex ($choice) {
         '^1$' { $findings = Invoke-HealthCheck -Save; Show-SFShareOffer -Findings $findings -Context $ctx }
-        '^8$' { Invoke-LiveCheck }
-        '^9$' { Show-SFBenchmarkMenu -Context $ctx; [void](Read-SFInput '  Enter to go back...') }
         '^2$' { Start-Optimize $ctx.SuggestedPreset; [void](Read-SFInput '  Enter to go back...') }
         '^3$' { Start-Optimize $other; [void](Read-SFInput '  Enter to go back...') }
         '^4$' { Start-Optimize 'Minimal'; [void](Read-SFInput '  Enter to go back...') }
@@ -345,7 +357,9 @@ while ($true) {
             if ($saved) { Write-Host ''; Write-Host ('  Saved: ' + $saved) -ForegroundColor DarkGray }
             [void](Read-SFInput '  Enter to go back...')
         }
-        '^(?i)adv(anced)?$' { Show-Advanced }
+        '^8$' { Invoke-LiveCheck }
+        '^9$' { Show-SFBenchmarkMenu -Context $ctx; [void](Read-SFInput '  Enter to go back...') }
+        '^(?i)(a|adv|advanced)$' { Show-Advanced }
         '^(?i)u$' { if ($update) { Show-SFUpdate $update; [void](Read-SFInput '  Enter to go back...') } }
         '^0$' { return }
         default { }

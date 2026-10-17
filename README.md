@@ -26,8 +26,9 @@ want to improve it, you're welcome to: open an issue or a pull request.
 5. It asks whether to run the debloat tools (WinUtil and Win11Debloat). If the PC already went
    through Talon, WinUtil or Win11Debloat, choose *Skip* and only SteadyFrame's own settings are
    applied. It looks for the folders those tools leave behind and suggests an answer.
-6. Go through the lists. Everything that will change is ticked; type a number to untick it,
-   press Enter to continue. Nothing happens until you type `YES` on the summary screen.
+6. Go through the lists. Everything that will change is ticked. Move with the arrow keys, press
+   Space to tick or untick, Enter to continue. Nothing happens until you type `YES` on the summary
+   screen.
 7. Restart the PC when it's done.
 
 To undo, double-click **`Revert.bat`** and pick the run you want to undo. SteadyFrame also creates a
@@ -75,8 +76,8 @@ The changes, grouped the same way as in the menu:
   and [Win11Debloat](https://github.com/Raphire/Win11Debloat) by Raphire with a fixed list of options
   (removes preinstalled apps like Candy Crush and Clipchamp, turns off ads, tips, Copilot and telemetry)
 
-Each item in the menu shows why it's there and what it may stop working. Type `i` and the number to
-see it. The summary screen lists everything that could stop working before you confirm.
+Each item in the lists shows why it's there and what it may stop working: the text under the list
+explains whichever item is highlighted. The summary screen lists everything that could stop working before you confirm.
 
 ### Evidence tiers
 
@@ -123,12 +124,12 @@ before running it. If the fingerprint doesn't match, the file is deleted and not
 
 SteadyFrame itself doesn't send any data anywhere. It only connects to GitHub: to download those two
 tools (and PresentMon), and when the menu opens, to ask for the latest SteadyFrame version number. If you don't want the
-tools at all, open Advanced (type `adv` in the main menu) and set the source to *None*. With
+tools at all, open Advanced (press A in the main menu) and set the source to *None*. With
 `-Prefetch` you can download them once and then use the folder on PCs without internet.
 
 ### Updates
 
-When a newer version is out, the menu says so. Type `U` to see what changed and download it. It goes
+When a newer version is out, the menu says so. Press `U` to see what changed and download it. It goes
 into a new folder next to the current one (for example `SteadyFrame-0.1.3`), and the GitHub checksum
 is checked first. Nothing updates by itself and nothing runs until you open `Run.bat` in the new folder.
 The undo history keeps working from either folder. `-NoUpdateCheck` skips the version check.
@@ -180,7 +181,7 @@ If a specific setting makes things worse on your PC, undo just that one with `Re
 
 ## Options
 
-Type `adv` in the main menu for:
+Press A in the main menu for:
 
 - where the debloat tools come from: the checked versions (default), the latest versions (not
   checked), or none

@@ -21,8 +21,8 @@ Step 2: Run.bat
 ---------------
 Double-click it and click Yes when Windows asks for admin rights.
 Pick the option marked "recommended for this PC".
-It shows lists of every change. Type a number to untick something, press Enter
-to go on. Nothing changes until you type YES on the last screen.
+It shows lists of every change. Use the arrow keys and Space to tick or untick,
+Enter to go on. Nothing changes until you type YES on the last screen.
 
 Step 3: restart the PC
 ----------------------
@@ -46,7 +46,7 @@ Measure once before a change and once after, in the same place in the game.
 
 New versions
 ------------
-When a new version is out, the menu says so. Type U to download it. It goes
+When a new version is out, the menu says so. Press U to download it. It goes
 into a new folder next to this one; open Run.bat from there. Nothing updates
 by itself.
 
