@@ -259,7 +259,9 @@ To add a game, add it to `games\games.json`. Only put settings on its card that 
 developer behind them, with a source.
 
 To release a version, change `$script:SFVersion` in `lib\SteadyFrame.psm1`, commit, then push an
-annotated tag such as `v0.1.3` whose message is the release notes. Start the notes with what
+annotated tag such as `v0.2.1` whose message is the release notes:
+`git tag -a v0.2.1 --cleanup=verbatim -F notes.md` (without `--cleanup=verbatim`, git drops lines
+starting with `#`, including Markdown headings). Start the notes with what
 changed: the update prompt inside SteadyFrame shows their first lines. GitHub Actions then runs the
 tests, builds `SteadyFrame-<version>.zip` and publishes the release. A release created on the GitHub
 website with a new tag also gets the zip attached automatically.
