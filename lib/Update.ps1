@@ -47,7 +47,8 @@ function Install-SFUpdate {
     if (-not $Release.Asset) { throw ('Release {0} has no SteadyFrame-{0}.zip. Download it from {1}' -f $Release.Version, $Release.Url) }
     $dest = Join-Path $Parent ('SteadyFrame-' + $Release.Version)
     if (Test-Path -LiteralPath $dest) { throw "$dest already exists. Use that folder, or delete it and try again." }
-    $zip = Join-Path $env:TEMP ('SteadyFrame-update-{0}.zip' -f [guid]::NewGuid().ToString('N'))
+    # not %TEMP%: a normal process could swap the file there between the checksum and the unzip
+    $zip = Join-Path $Parent ('SteadyFrame-update-{0}.zip' -f [guid]::NewGuid().ToString('N'))
     $work = $dest + '.part'
     try {
         Invoke-SFDownload -Url $Release.Asset.browser_download_url -OutFile $zip

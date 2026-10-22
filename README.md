@@ -35,6 +35,24 @@ To undo, double-click **`Revert.bat`** and pick the run you want to undo. Steady
 Windows restore point before changing anything, which undoes everything at once
 (press Win+R, type `rstrui`, press Enter).
 
+### Or with one line
+
+Open PowerShell and paste:
+
+```powershell
+irm https://sdoux.me | iex
+```
+
+Keep the `https://`. Without it PowerShell connects over plain http first, and anyone on the same
+network (public Wi-Fi, for example) could swap what gets run.
+
+It asks for admin rights, downloads the latest release from GitHub, checks it against the SHA256 in
+that release, puts it in `C:\Program Files\SteadyFrame` and opens the menu. To undo a run or get a
+newer version, run the same line again. Health reports and FPS history move over to new versions.
+
+Running it means trusting whoever controls the domain and the GitHub account at that moment. If you'd
+rather read everything first, use the zip, or download `install.ps1` from the latest release and read it.
+
 ### Warnings you might see
 
 "Windows protected your PC" is SmartScreen. Windows shows it for any script downloaded from the

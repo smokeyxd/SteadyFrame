@@ -633,6 +633,55 @@ It 'Revert lists journals from the new and the old location, newest first, no du
     Remove-Item -LiteralPath $base -Recurse -Force
 }
 
+It 'the undo history folder only counts when Administrators or SYSTEM own it' {
+    $d = Join-Path $env:TEMP ('sf-owner-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $d | Out-Null
+    try {
+        $acl = Get-Acl -LiteralPath $d
+        $acl.SetOwner([Security.Principal.WindowsIdentity]::GetCurrent().User)
+        Set-Acl -LiteralPath $d -AclObject $acl
+        Assert-True (-not (Test-SFAdminOwned $d)) 'owned by a normal user'
+        if (Test-SFAdmin) {
+            $acl.SetOwner((New-Object Security.Principal.SecurityIdentifier 'S-1-5-32-544'))
+            Set-Acl -LiteralPath $d -AclObject $acl
+            Assert-True (Test-SFAdminOwned $d) 'owned by Administrators'
+        }
+        Assert-True (-not (Test-SFAdminOwned (Join-Path $d 'missing'))) 'missing folder'
+    } finally { Remove-Item -LiteralPath $d -Recurse -Force }
+}
+
+It 'the undo history location ignores a changed ProgramData variable' {
+    $old = $env:ProgramData
+    try {
+        $env:ProgramData = Join-Path $env:TEMP 'sf-fake-programdata'
+        Assert-True ((Get-SFDataRoot) -notlike "$env:ProgramData*") (Get-SFDataRoot)
+    } finally { $env:ProgramData = $old }
+}
+
+It 'an undo history folder a normal user made first is moved aside, not reused' {
+    if (-not (Test-SFAdmin)) { return }
+    $mod = Get-Module SteadyFrame
+    $base = Join-Path $env:TEMP ('sf-data-' + [guid]::NewGuid().ToString('N'))
+    $dir = Join-Path $base 'SteadyFrame'
+    $real = & $mod { ${function:script:Get-SFDataRoot} }
+    & $mod { param($d) ${function:script:Get-SFDataRoot} = { $d }.GetNewClosure() } $dir
+    try {
+        New-Item -ItemType Directory -Path (Join-Path $dir 'runs\PC_20260101-000000') -Force | Out-Null
+        $acl = Get-Acl -LiteralPath $dir
+        $acl.SetOwner([Security.Principal.WindowsIdentity]::GetCurrent().User)
+        Set-Acl -LiteralPath $dir -AclObject $acl
+        Assert-Equal 1 @(Get-SFRunRoots).Count 'not listed while a normal user owns it'
+        Assert-Equal $dir (Initialize-SFDataRoot)
+        Assert-True (Test-SFAdminOwned $dir) 'the new one is owned by Administrators'
+        Assert-True (-not (Test-Path -LiteralPath (Join-Path $dir 'runs'))) 'nothing from the old one reused'
+        Assert-Equal 1 @(Get-ChildItem -LiteralPath $base -Directory -Filter 'SteadyFrame.untrusted-*').Count 'old one moved aside'
+        Assert-Equal 2 @(Get-SFRunRoots).Count 'listed again'
+    } finally {
+        & $mod { param($f) ${function:script:Get-SFDataRoot} = $f } $real
+        Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 Write-Host 'Updates' -ForegroundColor Cyan
 
 It 'compares versions as numbers, ignores tags that are not versions' {
@@ -682,6 +731,18 @@ It 'a checksum mismatch installs nothing and leaves nothing behind' {
     try { Install-SFUpdate -Release (New-FakeRelease ('sha256:' + ('0' * 64))) -Parent $parent } catch { $err = $_.Exception.Message }
     Assert-True ($err -like 'Checksum mismatch*') "got: $err"
     Assert-Equal 0 @(Get-ChildItem -LiteralPath $parent).Count
+}
+
+It 'the update download stays out of %TEMP%' {
+    $parent = Join-Path $updBase 'notemp'
+    New-Item -ItemType Directory -Path $parent | Out-Null
+    $oldTemp = $env:TEMP
+    try {
+        $env:TEMP = Join-Path $updBase 'no-such-folder'
+        [void](Install-SFUpdate -Release (New-FakeRelease '') -Parent $parent)
+    } finally { $env:TEMP = $oldTemp }
+    Assert-True (Test-Path -LiteralPath (Join-Path $parent 'SteadyFrame-9.9.9\SteadyFrame.ps1'))
+    Assert-Equal 1 @(Get-ChildItem -LiteralPath $parent).Count 'no leftover download'
 }
 
 Remove-Item -LiteralPath $updBase -Recurse -Force -ErrorAction SilentlyContinue
@@ -840,6 +901,21 @@ It 'number list parser handles ranges, commas and junk' {
     Assert-Equal '1,2,3,5' ((ConvertFrom-SFNumberList '1-3, 5' 10) -join ',')
     Assert-Equal '2' ((ConvertFrom-SFNumberList '2 99' 10) -join ',')
     Assert-Null (ConvertFrom-SFNumberList 'abc' 10)
+}
+
+Write-Host 'Installer' -ForegroundColor Cyan
+
+$installer = [IO.File]::ReadAllText((Join-Path $root 'install.ps1'))
+
+It 'install.ps1 from the repo refuses to run until a release build fills it in' {
+    $out = (& { Invoke-Expression $installer } 6>&1 | Out-String)
+    Assert-True ($out -like '*unbuilt*') $out
+}
+
+It 'install.ps1 refuses a version that is not just a version number' {
+    $bad = $installer.Replace("'__VERSION__'", "'1.0; Write-Host pwned'").Replace("'__SHA256__'", ("'" + ('a' * 64) + "'"))
+    $out = (& { Invoke-Expression $bad } 6>&1 | Out-String)
+    Assert-True ($out -like '*unbuilt*' -and $out -notlike '*pwned*') $out
 }
 
 Reset-Sandbox

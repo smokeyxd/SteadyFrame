@@ -4,15 +4,35 @@ function Get-SFRoot { $script:SFRoot }
 
 # Undo journals live here and not next to the script, so deleting the SteadyFrame folder or
 # unzipping a newer version somewhere else doesn't lose the way back.
+# Not $env:ProgramData: users can set their own environment variables, and elevated processes see them.
 function Get-SFDataRoot {
-    if (-not $env:ProgramData) { return (Get-SFRoot) }
-    return (Join-Path $env:ProgramData 'SteadyFrame')
+    $common = [Environment]::GetFolderPath('CommonApplicationData')
+    if (-not $common) { return (Get-SFRoot) }
+    return (Join-Path $common 'SteadyFrame')
+}
+
+# Administrators, SYSTEM, TrustedInstaller
+$script:SFTrustedOwners = @('S-1-5-32-544', 'S-1-5-18', 'S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464')
+
+function Test-SFAdminOwned {
+    param([Parameter(Mandatory)][string]$Path)
+    try { $owner = (Get-Acl -LiteralPath $Path).GetOwner([System.Security.Principal.SecurityIdentifier]).Value }
+    catch { return $false }
+    return ($script:SFTrustedOwners -contains $owner)
 }
 
 # Admins and SYSTEM can write, users can only read: Revert runs elevated and replays these
 # files, so a normal process must not be able to slip entries into them.
+# Normal users can create folders in ProgramData too. If one made this folder before SteadyFrame
+# did, they own it and could have put journals in it, so it gets moved aside, never reused.
 function Initialize-SFDataRoot {
     $dir = Get-SFDataRoot
+    if ((Test-Path -LiteralPath $dir) -and -not (Test-SFAdminOwned $dir)) {
+        $aside = '{0}.untrusted-{1}' -f (Split-Path -Leaf $dir), (Get-Date -Format 'yyyyMMdd-HHmmss')
+        try { Rename-Item -LiteralPath $dir -NewName $aside -ErrorAction Stop }
+        catch { throw "$dir wasn't created by SteadyFrame (Administrators don't own it) and can't be moved aside. Delete it and run SteadyFrame again." }
+        Write-SFStatus 'WARN' "$dir wasn't created by SteadyFrame, moved it to $aside"
+    }
     $sec = New-Object System.Security.AccessControl.DirectorySecurity
     $sec.SetAccessRuleProtection($true, $false)
     $inherit = [System.Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit'
@@ -20,7 +40,15 @@ function Initialize-SFDataRoot {
         $sid = New-Object System.Security.Principal.SecurityIdentifier $ace[0]
         $sec.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule $sid, $ace[1], $inherit, 'None', 'Allow'))
     }
-    if (-not (Test-Path -LiteralPath $dir)) { [void][System.IO.Directory]::CreateDirectory($dir, $sec) }
+    if (-not (Test-Path -LiteralPath $dir)) {
+        [void][System.IO.Directory]::CreateDirectory($dir, $sec)
+        # already the default owner for elevated admins, unless a policy changed that
+        try {
+            $acl = Get-Acl -LiteralPath $dir
+            $acl.SetOwner((New-Object System.Security.Principal.SecurityIdentifier 'S-1-5-32-544'))
+            Set-Acl -LiteralPath $dir -AclObject $acl
+        } catch { }
+    }
     else { try { [System.IO.Directory]::SetAccessControl($dir, $sec) } catch { } }
     return $dir
 }
