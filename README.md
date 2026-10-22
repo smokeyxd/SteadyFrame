@@ -40,7 +40,7 @@ Windows restore point before changing anything, which undoes everything at once
 Open PowerShell and paste:
 
 ```powershell
-irm https://sdoux.me | iex
+irm https://debloat.sdoux.me | iex
 ```
 
 Keep the `https://`. Without it PowerShell connects over plain http first, and anyone on the same
