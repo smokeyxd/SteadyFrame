@@ -83,7 +83,11 @@ function Get-SFJournals {
     return @($list | Sort-Object @{ Expression = { $_.Name -replace '^.*_(\d{8}-\d{6}).*$', '$1' } }, Name -Descending)
 }
 
-# 0.1.0 kept journals in the script folder's runs\, so that one is still read
+# 0.1.0 kept journals in the script folder's runs\, so that one is still read.
+# The shared one is skipped if a normal user owns it (see Initialize-SFDataRoot).
 function Get-SFRunRoots {
-    return @((Join-Path (Get-SFDataRoot) 'runs'), (Join-Path (Get-SFRoot) 'runs'))
+    $data = Get-SFDataRoot
+    $roots = @((Join-Path (Get-SFRoot) 'runs'))
+    if ((Test-Path -LiteralPath $data) -and -not (Test-SFAdminOwned $data)) { return $roots }
+    return @((Join-Path $data 'runs')) + $roots
 }

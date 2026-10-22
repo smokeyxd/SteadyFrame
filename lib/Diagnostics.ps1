@@ -104,7 +104,7 @@ function Compare-SFSecurityBaseline {
 }
 
 function Get-SFNvidiaBar1MiB {
-    $smi = Join-Path $env:SystemRoot 'System32\nvidia-smi.exe'
+    $smi = Join-Path ([Environment]::SystemDirectory) 'nvidia-smi.exe'
     if (-not (Test-Path -LiteralPath $smi)) { return $null }
     $out = (Get-SFSafe { & $smi -q -d MEMORY 2>$null } @()) -join "`n"
     $m = [regex]::Match($out, 'BAR1[^\n]*\n\s*Total\s*:\s*(\d+)\s*MiB')
