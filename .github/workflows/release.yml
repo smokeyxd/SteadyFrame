@@ -1,30 +1,53 @@
 name: Release
 
+# Two ways to release: push a tag (git tag -a v1.2.3 -m "notes", then git push origin v1.2.3), or
+# run this workflow by hand on main with "publish" ticked, which tags the version that's in
+# lib/SteadyFrame.psm1 (works from a phone). The release is created as a draft, gets its files,
+# and is published last, so it keeps working with immutable releases turned on.
 on:
   push:
     tags: ['v*']
-  release:
-    types: [published]
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Tag and publish the version in lib/SteadyFrame.psm1
+        type: boolean
+        default: false
+      notes:
+        description: Release notes (only used when publishing)
+        type: string
+        default: ''
 
-permissions:
-  contents: write
+permissions: {}
 
 concurrency:
-  group: release-${{ github.event.release.tag_name || github.ref_name }}
+  group: release-${{ github.ref_name }}
 
 jobs:
   release:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      # github.* values go in through env: ${{ }} inside run would paste a tag name into the shell as code
       - name: Version and tag
         shell: bash
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          PUBLISH: ${{ inputs.publish }}
         run: |
           version=$(sed -n "s/.*SFVersion = '\([^']*\)'.*/\1/p" lib/SteadyFrame.psm1)
-          [ -n "$version" ] || { echo "no SFVersion in lib/SteadyFrame.psm1"; exit 1; }
-          tag="${{ github.event.release.tag_name }}"
-          if [ -z "$tag" ] && [ "${{ github.ref_type }}" = "tag" ]; then tag="${{ github.ref_name }}"; fi
+          [[ "$version" =~ ^[0-9]+(\.[0-9]+){1,3}$ ]] || { echo "SFVersion in lib/SteadyFrame.psm1 is missing or not a plain version: '$version'"; exit 1; }
+          tag=""
+          if [ "$REF_TYPE" = "tag" ]; then tag="$REF_NAME"; fi
+          if [ "$PUBLISH" = "true" ]; then
+            [ "$REF_NAME" = "main" ] || { echo "publish from main, not $REF_NAME"; exit 1; }
+            tag="v$version"
+          fi
           if [ -n "$tag" ] && [ "$tag" != "v$version" ]; then
             echo "tag $tag does not match SteadyFrame version $version"
             exit 1
@@ -36,42 +59,58 @@ jobs:
         run: powershell -NoProfile -ExecutionPolicy Bypass -File tests\Run-Tests.ps1
       - name: Build the zip
         shell: bash
-        run: git archive --format=zip --prefix=SteadyFrame/ -o "SteadyFrame-$VERSION.zip" HEAD
+        run: |
+          mkdir out
+          git archive --format=zip --prefix=SteadyFrame/ -o "out/SteadyFrame-$VERSION.zip" HEAD
       - name: Check the zip
         shell: powershell
         run: |
           $dir = Join-Path $env:RUNNER_TEMP 'zipcheck'
-          Expand-Archive "SteadyFrame-$env:VERSION.zip" $dir -Force
+          Expand-Archive "out\SteadyFrame-$env:VERSION.zip" $dir -Force
           $root = Join-Path $dir 'SteadyFrame'
           foreach ($f in 'Run.bat', 'SteadyFrame.ps1', 'lib\SteadyFrame.psm1', 'How to use.txt', 'LICENSE') {
             if (-not (Test-Path (Join-Path $root $f))) { throw "missing from the zip: $f" }
           }
-          foreach ($f in 'tests', 'tools', '.github', '.gitattributes', '.gitignore') {
+          foreach ($f in 'tests', 'tools', '.github', '.gitattributes', '.gitignore', 'install.ps1') {
             if (Test-Path (Join-Path $root $f)) { throw "should not be in the zip: $f" }
           }
           # cmd can mis-jump to labels in LF-only .bat files
           if ([IO.File]::ReadAllText((Join-Path $root 'Run.bat')) -match "(?<!`r)`n") { throw 'Run.bat lost its CRLF line endings' }
-          (Get-FileHash "SteadyFrame-$env:VERSION.zip" -Algorithm SHA256).Hash.ToLower() | Out-File sha256.txt -Encoding ascii
+          (Get-FileHash "out\SteadyFrame-$env:VERSION.zip" -Algorithm SHA256).Hash.ToLower() | Out-File sha256.txt -Encoding ascii
+      - name: Build install.ps1
+        shell: powershell
+        run: |
+          $sha = (Get-Content sha256.txt -Raw).Trim()
+          $text = [IO.File]::ReadAllText("$PWD\install.ps1").Replace("'__VERSION__'", "'$env:VERSION'").Replace("'__SHA256__'", "'$sha'")
+          if (-not $text.Contains("`$version = '$env:VERSION'") -or -not $text.Contains("`$sha256 = '$sha'")) { throw 'install.ps1: placeholders not found' }
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseInput($text, [ref]$null, [ref]$errors)
+          if ($errors) { $errors | ForEach-Object { "$_" }; throw 'install.ps1 does not parse' }
+          [IO.File]::WriteAllText("$PWD\out\install.ps1", $text, (New-Object System.Text.ASCIIEncoding))
       - name: Publish
         if: env.TAG != ''
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          PUBLISH: ${{ inputs.publish }}
+          NOTES: ${{ inputs.notes }}
         run: |
-          zip="SteadyFrame-$VERSION.zip"
           sha=$(tr -d '\r\n' < sha256.txt)
-          if gh release view "$TAG" > /dev/null 2>&1; then
-            gh release upload "$TAG" "$zip" --clobber
+          if [ "$PUBLISH" = "true" ]; then
+            gh api "repos/$GH_REPO/git/refs" -f "ref=refs/tags/$TAG" -f "sha=$GITHUB_SHA" > /dev/null ||
+              { echo "couldn't create $TAG (already released? bump SFVersion in lib/SteadyFrame.psm1 first)"; exit 1; }
+            printf '%s\n' "$NOTES" > notes.md
           else
             git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
             git tag -l --format='%(contents)' "$TAG" > notes.md
-            printf '\nSHA256 of the zip: `%s`\n' "$sha" >> notes.md
-            gh release create "$TAG" "$zip" --title "SteadyFrame $VERSION" --notes-file notes.md --verify-tag
           fi
-      - name: Keep the zip (manual runs build it without publishing)
+          printf '\nSHA256 of the zip: `%s`\n' "$sha" >> notes.md
+          gh release create "$TAG" out/* --draft --title "SteadyFrame $VERSION" --notes-file notes.md --verify-tag
+          gh release edit "$TAG" --draft=false
+      - name: Keep the files (manual runs build them without publishing)
         if: env.TAG == ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: SteadyFrame-${{ env.VERSION }}
-          path: SteadyFrame-${{ env.VERSION }}.zip
+          path: out/

@@ -1,0 +1,10 @@
+version: 2
+updates:
+  # keeps the pinned action commits in the workflows up to date
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    # a compromised release is usually caught within days, so don't pick up brand-new ones
+    cooldown:
+      default-days: 7

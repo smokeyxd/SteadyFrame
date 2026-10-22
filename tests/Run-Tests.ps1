@@ -903,6 +903,21 @@ It 'number list parser handles ranges, commas and junk' {
     Assert-Null (ConvertFrom-SFNumberList 'abc' 10)
 }
 
+Write-Host 'Installer' -ForegroundColor Cyan
+
+$installer = [IO.File]::ReadAllText((Join-Path $root 'install.ps1'))
+
+It 'install.ps1 from the repo refuses to run until a release build fills it in' {
+    $out = (& { Invoke-Expression $installer } 6>&1 | Out-String)
+    Assert-True ($out -like '*unbuilt*') $out
+}
+
+It 'install.ps1 refuses a version that is not just a version number' {
+    $bad = $installer.Replace("'__VERSION__'", "'1.0; Write-Host pwned'").Replace("'__SHA256__'", ("'" + ('a' * 64) + "'"))
+    $out = (& { Invoke-Expression $bad } 6>&1 | Out-String)
+    Assert-True ($out -like '*unbuilt*' -and $out -notlike '*pwned*') $out
+}
+
 Reset-Sandbox
 Write-Host ''
 $color = if ($script:Fail -eq 0) { 'Green' } else { 'Red' }
