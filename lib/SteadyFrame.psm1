@@ -3,7 +3,7 @@
 
 $script:SFLibRoot = $PSScriptRoot
 $script:SFRoot = Split-Path -Parent $PSScriptRoot
-$script:SFVersion = '0.2.2'
+$script:SFVersion = '0.2.3'
 
 . (Join-Path $PSScriptRoot 'Util.ps1')
 . (Join-Path $PSScriptRoot 'Guard.ps1')
