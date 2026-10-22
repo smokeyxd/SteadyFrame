@@ -32,6 +32,8 @@ function Get-SFSteamLibraries {
 function Get-SFSteamAppDir {
     param([string[]]$Libraries, [int]$AppId)
     foreach ($lib in $Libraries) {
+        # Join-Path fails on a drive letter that no longer exists (old disk, unplugged USB drive)
+        if (-not (Test-Path -LiteralPath $lib)) { continue }
         $acf = Join-Path $lib ('steamapps\appmanifest_{0}.acf' -f $AppId)
         if (-not (Test-Path -LiteralPath $acf)) { continue }
         $m = [regex]::Match([IO.File]::ReadAllText($acf), '"installdir"\s+"([^"]+)"')

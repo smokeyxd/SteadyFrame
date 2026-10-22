@@ -520,6 +520,12 @@ It 'a game whose exe is missing is not reported' {
     Assert-Equal 0 $games.Count
 }
 
+It 'a Steam library on a drive that is gone is skipped without an error' {
+    $gone = [char[]](90..68) | Where-Object { -not (Test-Path -LiteralPath "$($_):\") } | Select-Object -First 1
+    $games = @(Get-SFInstalledGames -SteamLibraries @("$($gone):\SteamLibrary", $steamDir) -RiotMetadataRoot (Join-Path $gameRoot 'NoMeta') -NoRiotDefaultPath)
+    Assert-Equal 'cs2' ((@($games | ForEach-Object { $_.Id })) -join ',') 'the other library still counts'
+}
+
 $fakeGames = @(Get-SFInstalledGames -SteamLibraries @($steamDir, $lib2) -RiotMetadataRoot $meta -NoRiotDefaultPath)
 
 It 'cards show NVIDIA-only lines only on NVIDIA PCs' {
